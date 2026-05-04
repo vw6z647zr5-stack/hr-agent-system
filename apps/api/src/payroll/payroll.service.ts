@@ -8,6 +8,7 @@ import { paginateQuery } from '../common/utils/pagination';
 import { AttendanceEntity, OvertimeRequestEntity } from '../attendance/attendance.entities';
 import { PerformanceReviewEntity } from '../performance/performance.entities';
 import { StorageService } from '../storage/storage.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CreatePayslipDto,
   CreateSalaryConfigDto,
@@ -35,12 +36,15 @@ export class PayrollService {
     @InjectRepository(PerformanceReviewEntity)
     private readonly reviewsRepository: Repository<PerformanceReviewEntity>,
     private readonly storageService: StorageService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async listSalaryConfigs(query: ListQueryDto, user: AuthenticatedUser) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.salaryConfigsRepository
       .createQueryBuilder('salaryConfig')
       .leftJoinAndSelect('salaryConfig.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('salaryConfig.createdAt', 'DESC');
 
     if (query.search) {
@@ -91,9 +95,11 @@ export class PayrollService {
   }
 
   async listSalaryRecords(query: ListQueryDto, user: AuthenticatedUser) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.salaryRecordsRepository
       .createQueryBuilder('salaryRecord')
       .leftJoinAndSelect('salaryRecord.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('salaryRecord.month', 'DESC');
 
     if (query.search) {
@@ -253,10 +259,12 @@ export class PayrollService {
   }
 
   async listPayslips(query: ListQueryDto, user: AuthenticatedUser) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.payslipsRepository
       .createQueryBuilder('payslip')
       .leftJoinAndSelect('payslip.salaryRecord', 'salaryRecord')
       .leftJoinAndSelect('payslip.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('payslip.issuedAt', 'DESC');
 
     if (query.search) {

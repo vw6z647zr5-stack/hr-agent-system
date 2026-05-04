@@ -9,6 +9,7 @@ import { ListQueryDto } from '../common/dto/list-query.dto';
 import { paginateQuery } from '../common/utils/pagination';
 import { normalizeExtractedText, repairTextEncoding } from '../common/utils/text-encoding';
 import { StorageService } from '../storage/storage.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CandidatePortalApplicationDto,
   CreateCandidateDto,
@@ -50,30 +51,54 @@ export class RecruitmentService {
     private readonly knowledgeBaseRepository: Repository<KnowledgeBaseArticleEntity>,
     private readonly storageService: StorageService,
     private readonly agentService: AgentService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async getRecruitmentDashboard() {
+    const companyId = this.tenantContext.getCompanyId();
+
     const [jobPostings, candidates, resumes, interviews, offers] = await Promise.all([
-      this.jobPostingsRepository.find({
-        relations: { department: true, position: true },
-        order: { createdAt: 'DESC' },
-      }),
-      this.candidatesRepository.find({
-        relations: { appliedJobPosting: true },
-        order: { createdAt: 'DESC' },
-      }),
-      this.resumesRepository.find({
-        relations: { candidate: true },
-        order: { uploadedAt: 'DESC', createdAt: 'DESC' },
-      }),
-      this.interviewsRepository.find({
-        relations: { candidate: true, jobPosting: true, interviewer: true },
-        order: { scheduledAt: 'ASC' },
-      }),
-      this.offersRepository.find({
-        relations: { candidate: true, jobPosting: true, approver: true },
-        order: { createdAt: 'DESC' },
-      }),
+      this.jobPostingsRepository
+        .createQueryBuilder('jobPosting')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .leftJoinAndSelect('jobPosting.position', 'position')
+        .where('department.company_id = :companyId', { companyId })
+        .orderBy('jobPosting.createdAt', 'DESC')
+        .getMany(),
+      this.candidatesRepository
+        .createQueryBuilder('candidate')
+        .leftJoinAndSelect('candidate.appliedJobPosting', 'jobPosting')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .where('department.company_id = :companyId', { companyId })
+        .orderBy('candidate.createdAt', 'DESC')
+        .getMany(),
+      this.resumesRepository
+        .createQueryBuilder('resume')
+        .leftJoinAndSelect('resume.candidate', 'candidate')
+        .leftJoinAndSelect('candidate.appliedJobPosting', 'jobPosting')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .where('department.company_id = :companyId', { companyId })
+        .orderBy('resume.uploadedAt', 'DESC')
+        .addOrderBy('resume.createdAt', 'DESC')
+        .getMany(),
+      this.interviewsRepository
+        .createQueryBuilder('interview')
+        .leftJoinAndSelect('interview.candidate', 'candidate')
+        .leftJoinAndSelect('interview.jobPosting', 'jobPosting')
+        .leftJoinAndSelect('interview.interviewer', 'interviewer')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .where('department.company_id = :companyId', { companyId })
+        .orderBy('interview.scheduledAt', 'ASC')
+        .getMany(),
+      this.offersRepository
+        .createQueryBuilder('offer')
+        .leftJoinAndSelect('offer.candidate', 'candidate')
+        .leftJoinAndSelect('offer.jobPosting', 'jobPosting')
+        .leftJoinAndSelect('offer.approver', 'approver')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .where('department.company_id = :companyId', { companyId })
+        .orderBy('offer.createdAt', 'DESC')
+        .getMany(),
     ]);
 
     const now = new Date();
@@ -271,10 +296,12 @@ export class RecruitmentService {
   }
 
   async listJobPostings(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.jobPostingsRepository
       .createQueryBuilder('jobPosting')
       .leftJoinAndSelect('jobPosting.department', 'department')
       .leftJoinAndSelect('jobPosting.position', 'position')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('jobPosting.createdAt', 'DESC');
 
     if (query.search) {
@@ -300,10 +327,25 @@ export class RecruitmentService {
   }
 
   async listPublicJobPostings(query: ListQueryDto) {
-    const result = await this.listJobPostings({
-      ...query,
-      status: 'open',
-    });
+    const builder = this.jobPostingsRepository
+      .createQueryBuilder('jobPosting')
+      .leftJoinAndSelect('jobPosting.department', 'department')
+      .leftJoinAndSelect('jobPosting.position', 'position')
+      .where('jobPosting.status = :status', { status: 'open' })
+      .orderBy('jobPosting.createdAt', 'DESC');
+
+    if (query.search) {
+      builder.andWhere(
+        new Brackets((qb) => {
+          qb.where('jobPosting.title ILIKE :search', { search: `%${query.search}%` }).orWhere(
+            'jobPosting.location ILIKE :search',
+            { search: `%${query.search}%` },
+          );
+        }),
+      );
+    }
+
+    const result = await paginateQuery(builder, query);
 
     return {
       ...result,
@@ -645,9 +687,12 @@ export class RecruitmentService {
   }
 
   async listCandidates(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.candidatesRepository
       .createQueryBuilder('candidate')
       .leftJoinAndSelect('candidate.appliedJobPosting', 'jobPosting')
+      .leftJoinAndSelect('jobPosting.department', 'department')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('candidate.createdAt', 'DESC');
 
     if (query.search) {
@@ -716,9 +761,13 @@ export class RecruitmentService {
   }
 
   async listResumes(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.resumesRepository
       .createQueryBuilder('resume')
       .leftJoinAndSelect('resume.candidate', 'candidate')
+      .leftJoinAndSelect('candidate.appliedJobPosting', 'jobPosting')
+      .leftJoinAndSelect('jobPosting.department', 'department')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('resume.createdAt', 'DESC');
 
     if (query.search) {
@@ -917,11 +966,14 @@ export class RecruitmentService {
   }
 
   async listInterviews(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.interviewsRepository
       .createQueryBuilder('interview')
       .leftJoinAndSelect('interview.candidate', 'candidate')
       .leftJoinAndSelect('interview.jobPosting', 'jobPosting')
       .leftJoinAndSelect('interview.interviewer', 'interviewer')
+      .leftJoinAndSelect('jobPosting.department', 'department')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('interview.scheduledAt', 'DESC');
 
     if (query.search) {
@@ -979,11 +1031,14 @@ export class RecruitmentService {
   }
 
   async listOffers(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.offersRepository
       .createQueryBuilder('offer')
       .leftJoinAndSelect('offer.candidate', 'candidate')
       .leftJoinAndSelect('offer.jobPosting', 'jobPosting')
       .leftJoinAndSelect('offer.approver', 'approver')
+      .leftJoinAndSelect('jobPosting.department', 'department')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('offer.createdAt', 'DESC');
 
     if (query.search) {
@@ -1115,11 +1170,15 @@ export class RecruitmentService {
     const [candidate, resumes, jobs] = await Promise.all([
       this.candidatesRepository.findOne({ where: { id: candidateId }, relations: { appliedJobPosting: true } }),
       preferredResume ? Promise.resolve([preferredResume]) : this.getCandidateResumes(candidateId),
-      this.jobPostingsRepository.find({
-        where: { status: 'open' },
-        relations: { department: true, position: true },
-        order: { publishedAt: 'DESC', createdAt: 'DESC' },
-      }),
+      this.jobPostingsRepository
+        .createQueryBuilder('jobPosting')
+        .leftJoinAndSelect('jobPosting.department', 'department')
+        .leftJoinAndSelect('jobPosting.position', 'position')
+        .where('jobPosting.status = :status', { status: 'open' })
+        .andWhere('department.company_id = :companyId', { companyId: this.tenantContext.getCompanyIdOrNull() ?? undefined })
+        .orderBy('jobPosting.publishedAt', 'DESC')
+        .addOrderBy('jobPosting.createdAt', 'DESC')
+        .getMany(),
     ]);
 
     if (!candidate) {
@@ -1310,8 +1369,9 @@ export class RecruitmentService {
 
   private async searchCandidateKnowledge(query: string) {
     const terms = this.extractMatchTokens(query);
+    const companyId = this.tenantContext.getCompanyIdOrNull();
     const articles = await this.knowledgeBaseRepository.find({
-      where: { isPublished: true },
+      where: { companyId: companyId ?? undefined, isPublished: true },
       order: { createdAt: 'DESC' },
     });
 

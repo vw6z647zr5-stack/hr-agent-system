@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 
 type CachedValue = {
@@ -16,9 +16,11 @@ function parseJsonSafely<T>(value: string): T | null {
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private client?: Redis;
   private isReady = false;
   private isRedisEnabled = false;
+  private connectionFailed = false;
   private readonly memoryStore = new Map<string, CachedValue>();
   private readonly maxMemoryEntries = 1_000;
 
@@ -33,27 +35,40 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.client = new Redis(redisUrl, {
       lazyConnect: true,
       enableOfflineQueue: false,
-      maxRetriesPerRequest: 1,
+      maxRetriesPerRequest: 0,
       retryStrategy: () => null,
     });
 
     this.client.on('ready', () => {
       this.isReady = true;
+      this.connectionFailed = false;
+      this.logger.log('Redis connected');
     });
 
     this.client.on('close', () => {
       this.isReady = false;
     });
 
-    this.client.on('error', () => {
-      this.isReady = false;
+    this.client.on('error', (err) => {
+      if (!this.connectionFailed) {
+        this.isReady = false;
+      }
+      // Swallow ECONNREFUSED after first occurrence to prevent log storm
+      if (err?.message?.includes('ECONNREFUSED') || (err as any)?.code === 'ECONNREFUSED') {
+        if (!this.connectionFailed) {
+          this.connectionFailed = true;
+          this.logger.warn('Redis unavailable, falling back to in-memory cache');
+        }
+      }
     });
 
     void this.client
       .connect()
       .catch(() => {
+        this.connectionFailed = true;
         this.isReady = false;
         this.isRedisEnabled = false;
+        this.logger.warn('Redis connection failed, falling back to in-memory cache');
         this.client?.disconnect(false);
       });
   }

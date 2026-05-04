@@ -34,6 +34,7 @@ import { RiskHeatmap } from '../components/RiskHeatmap';
 import { SectionErrorBoundary } from '../components/shared';
 import { SkeletonDashboard } from '../components/shared';
 import { StatCard } from '../components/StatCard';
+import { TrialBanner } from '../components/TrialBanner';
 import { formatDisplayValue } from '../utils/display';
 
 const AUTO_REFRESH_KEY = 'dashboard_auto_refresh';
@@ -223,6 +224,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       {error ? <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} /> : null}
+      <TrialBanner />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex-1 rounded-[2rem] border border-white/60 bg-[radial-gradient(circle_at_80%_10%,_rgba(20,184,166,0.18),_transparent_36%),linear-gradient(135deg,_rgba(255,255,255,0.94),_rgba(241,245,249,0.90))] p-8 shadow-panel">

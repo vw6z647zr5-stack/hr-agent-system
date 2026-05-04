@@ -1,5 +1,5 @@
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
@@ -18,6 +18,12 @@ import { SelfServiceModule } from './self-service/self-service.module';
 import { StorageModule } from './storage/storage.module';
 import { OverviewModule } from './overview/overview.module';
 import { UsersModule } from './users/users.module';
+import { CompanyModule } from './company/company.module';
+import { AuditModule } from './audit/audit.module';
+import { TenantModule } from './tenant/tenant.module';
+import { TenantInterceptor } from './tenant/tenant.interceptor';
+import { TenantMiddleware } from './tenant/tenant.middleware';
+import { FeatureGuard } from './tenant/feature-guard';
 import { ENV_FILE_PATHS } from './config/env';
 import { getDatabaseUrl } from './config/security';
 
@@ -36,6 +42,9 @@ import { getDatabaseUrl } from './config/security';
       logging: false,
       namingStrategy: new SnakeNamingStrategy(),
     }),
+    AuditModule,
+    TenantModule,
+    CompanyModule,
     RedisModule,
     StorageModule,
     UsersModule,
@@ -58,6 +67,18 @@ import { getDatabaseUrl } from './config/security';
       provide: APP_GUARD,
       useClass: RolesGuard,
     },
+    {
+      provide: APP_GUARD,
+      useClass: FeatureGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantInterceptor,
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(TenantMiddleware).forRoutes('*');
+  }
+}

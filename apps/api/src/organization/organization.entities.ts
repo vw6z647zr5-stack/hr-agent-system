@@ -1,15 +1,25 @@
 import {
   Column,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
 } from 'typeorm';
 import { AuditableEntity } from '../database/base.entity';
 import { UserEntity } from '../users/user.entity';
+import { CompanyEntity } from '../company/company.entity';
 
 @Entity({ name: 'departments' })
+@Index(['companyId', 'code'], { unique: true })
 export class DepartmentEntity extends AuditableEntity {
+  @Column({ type: 'uuid' })
+  companyId!: string;
+
+  @ManyToOne(() => CompanyEntity, { nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: CompanyEntity;
+
   @Column({ type: 'uuid', nullable: true })
   parentId!: string | null;
 
@@ -23,7 +33,7 @@ export class DepartmentEntity extends AuditableEntity {
   @Column({ length: 120 })
   name!: string;
 
-  @Column({ length: 60, unique: true })
+  @Column({ length: 60 })
   code!: string;
 
   @Column({ type: 'uuid', nullable: true })
@@ -34,7 +44,15 @@ export class DepartmentEntity extends AuditableEntity {
 }
 
 @Entity({ name: 'positions' })
+@Index(['companyId', 'code'], { unique: true })
 export class PositionEntity extends AuditableEntity {
+  @Column({ type: 'uuid' })
+  companyId!: string;
+
+  @ManyToOne(() => CompanyEntity, { nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: CompanyEntity;
+
   @Column({ type: 'uuid', nullable: true })
   departmentId!: string | null;
 
@@ -45,7 +63,7 @@ export class PositionEntity extends AuditableEntity {
   @Column({ length: 120 })
   name!: string;
 
-  @Column({ length: 60, unique: true })
+  @Column({ length: 60 })
   code!: string;
 
   @Column({ length: 50 })
@@ -56,7 +74,16 @@ export class PositionEntity extends AuditableEntity {
 }
 
 @Entity({ name: 'employees' })
+@Index(['companyId', 'employeeNo'], { unique: true })
+@Index(['companyId', 'email'], { unique: true })
 export class EmployeeEntity extends AuditableEntity {
+  @Column({ type: 'uuid' })
+  companyId!: string;
+
+  @ManyToOne(() => CompanyEntity, { nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: CompanyEntity;
+
   @Column({ type: 'uuid', nullable: true })
   userId!: string | null;
 
@@ -64,13 +91,13 @@ export class EmployeeEntity extends AuditableEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity | null;
 
-  @Column({ length: 40, unique: true })
+  @Column({ length: 40 })
   employeeNo!: string;
 
   @Column({ length: 120 })
   fullName!: string;
 
-  @Column({ length: 160, unique: true })
+  @Column({ length: 160 })
   email!: string;
 
   @Column({ length: 40 })

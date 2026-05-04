@@ -1,9 +1,12 @@
 import { Controller, Get } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthenticatedUser, Role } from '../users/user.entity';
 import { OverviewService } from './overview.service';
 
+@ApiTags('overview')
+@ApiBearerAuth()
 @Controller('overview')
 export class OverviewController {
   constructor(private readonly overviewService: OverviewService) {}

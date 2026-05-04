@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { Role } from '../users/user.entity';
@@ -14,6 +15,8 @@ import {
 } from './attendance.dto';
 import { AttendanceService } from './attendance.service';
 
+@ApiTags('attendance')
+@ApiBearerAuth()
 @Controller()
 @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
 export class AttendanceController {

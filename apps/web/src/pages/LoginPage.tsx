@@ -1,5 +1,6 @@
 import {
   ArrowRightOutlined,
+  BankOutlined,
   EyeInvisibleOutlined,
   EyeTwoTone,
   LockOutlined,
@@ -163,6 +164,19 @@ export function LoginPage() {
                     <span className="text-slate-300">|</span>
                     <Link to="/career/register" className="font-medium text-brand hover:text-brand/80 transition-colors">
                       注册候选人账号
+                    </Link>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-5 text-sm text-slate-600">
+                  <div className="flex items-center gap-2 font-semibold text-ink">
+                    <BankOutlined className="text-brand" />
+                    企业试用
+                  </div>
+                  <div className="mt-2">中小型企业可注册 30 天免费试用，体验智能人事管理全流程。</div>
+                  <div className="mt-3">
+                    <Link to="/register" className="font-medium text-brand hover:text-brand/80 transition-colors">
+                      注册企业试用账号
                     </Link>
                   </div>
                 </div>

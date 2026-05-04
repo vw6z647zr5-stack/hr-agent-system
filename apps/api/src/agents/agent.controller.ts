@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthenticatedUser, Role } from '../users/user.entity';
@@ -12,6 +13,8 @@ import {
 import { AgentService } from './agent.service';
 import { CompanyFactsService } from './company-facts.service';
 
+@ApiTags('agent')
+@ApiBearerAuth()
 @Controller('agent')
 export class AgentController {
   constructor(

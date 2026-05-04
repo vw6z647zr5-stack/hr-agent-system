@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/
 import { JwtService } from '@nestjs/jwt';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { AuditService } from '../audit/audit.service';
 import { RedisService } from '../redis/redis.service';
 import { hashPassword, verifyPassword } from '../common/utils/security';
 import { EmployeeEntity } from '../organization/organization.entities';
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly redisService: RedisService,
     private readonly authSessionService: AuthSessionService,
     private readonly storageService: StorageService,
+    private readonly auditService: AuditService,
     @InjectRepository(EmployeeEntity)
     private readonly employeesRepository: Repository<EmployeeEntity>,
     @InjectRepository(CandidateEntity)
@@ -67,10 +69,12 @@ export class AuthService {
       employeeId: authUser.employeeId,
       displayName: authUser.displayName,
       photoUrl: authUser.photoUrl,
+      companyId: authUser.companyId,
     });
 
     await this.usersService.touchLastLogin(user.id);
     await this.redisService.delete(this.loginFailureKey(username));
+    this.auditService.logWithUser(user.id, 'login', 'user', user.id);
     await this.authSessionService.createSession({
       sessionId,
       userId: user.id,
@@ -217,6 +221,7 @@ export class AuthService {
       employeeId: employee?.id ?? null,
       displayName: user.displayName,
       photoUrl: user.photoUrl,
+      companyId: user.companyId ?? user.company?.id,
     };
   }
 }

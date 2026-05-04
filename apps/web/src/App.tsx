@@ -26,6 +26,9 @@ const RecruitmentWorkbenchPage = lazy(async () => ({
 const SelfServicePage = lazy(async () => ({
   default: (await import('./pages/SelfServicePage')).SelfServicePage,
 }));
+const CompanyRegisterPage = lazy(async () => ({
+  default: (await import('./pages/CompanyRegisterPage')).CompanyRegisterPage,
+}));
 const CandidateRegisterPage = lazy(async () => ({
   default: (await import('./pages/CandidateRegisterPage')).CandidateRegisterPage,
 }));
@@ -59,6 +62,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<CompanyRegisterPage />} />
             <Route path="/career" element={<CareerPage />} />
             <Route path="/career/register" element={<CandidateRegisterPage />} />
 

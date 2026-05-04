@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RedisService } from '../redis/redis.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   KnowledgeBaseArticleEntity,
   ProfileChangeRequestEntity,
@@ -92,6 +93,7 @@ export class AgentService {
     private readonly documentRagService: DocumentRagService,
     private readonly companyFactsService: CompanyFactsService,
     private readonly redisService: RedisService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async parseResume(payload: ParseResumeAgentDto) {
@@ -203,8 +205,9 @@ export class AgentService {
   }
 
   getKnowledgeBase() {
+    const companyId = this.tenantContext.getCompanyId();
     return this.knowledgeBaseRepository.find({
-      where: { isPublished: true },
+      where: { companyId, isPublished: true },
       order: { createdAt: 'DESC' },
     });
   }
@@ -249,11 +252,14 @@ export class AgentService {
   }
 
   async getPerformanceInsights() {
-    const recentReviews = await this.reviewsRepository.find({
-      relations: { employee: true },
-      order: { createdAt: 'DESC' },
-      take: 10,
-    });
+    const companyId = this.tenantContext.getCompanyId();
+    const recentReviews = await this.reviewsRepository
+      .createQueryBuilder('review')
+      .leftJoinAndSelect('review.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
+      .orderBy('review.createdAt', 'DESC')
+      .take(10)
+      .getMany();
 
     const averageScore =
       recentReviews.length === 0
@@ -289,7 +295,8 @@ export class AgentService {
       return { ...profile, summary };
     }
 
-    const employees = await this.employeesRepository.find();
+    const companyId = this.tenantContext.getCompanyId();
+    const employees = await this.employeesRepository.find({ where: { companyId } });
     return Promise.all(employees.map((employee) => this.buildAttritionProfile(employee.id)));
   }
 
@@ -454,7 +461,10 @@ export class AgentService {
   }
 
   private async searchKnowledgeBase(query: string) {
-    const articles = await this.knowledgeBaseRepository.find({ where: { isPublished: true } });
+    const companyId = this.tenantContext.getCompanyIdOrNull();
+    const articles = await this.knowledgeBaseRepository.find({
+      where: { companyId: companyId ?? undefined, isPublished: true },
+    });
     const terms = this.extractSearchTerms(query);
 
     return articles
@@ -900,12 +910,15 @@ export class AgentService {
       'employee_lookup_tool',
       '查询单个员工档案。',
       z.object({ employeeId: z.string() }),
-      async (input) => ({
-        employee: await this.employeesRepository.findOne({
-          where: { id: String(input.employeeId ?? '') },
-          relations: { department: true, position: true, manager: true },
-        }),
-      }),
+      async (input) => {
+        const companyId = this.tenantContext.getCompanyIdOrNull();
+        return {
+          employee: await this.employeesRepository.findOne({
+            where: { id: String(input.employeeId ?? ''), companyId: companyId ?? undefined },
+            relations: { department: true, position: true, manager: true },
+          }),
+        };
+      },
     );
   }
 

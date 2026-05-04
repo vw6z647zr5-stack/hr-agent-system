@@ -10,6 +10,10 @@ export interface AuthUser {
   employeeId: string | null;
   displayName: string;
   photoUrl?: string;
+  companyId?: string;
+  companyStatus?: string;
+  trialEndsAt?: string;
+  features?: Record<string, boolean>;
   employee?: Record<string, unknown> | null;
 }
 

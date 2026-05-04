@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { EmployeeEntity } from '../organization/organization.entities';
@@ -14,19 +14,23 @@ export class UsersService {
   ) {}
 
   findByUsername(username: string): Promise<UserEntity | null> {
-    return this.usersRepository.findOne({ where: { username } });
+    return this.usersRepository.findOne({ where: { username }, relations: { company: true } });
   }
 
   findByEmail(email: string): Promise<UserEntity | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    return this.usersRepository.findOne({ where: { email }, relations: { company: true } });
   }
 
   findById(id: string): Promise<UserEntity | null> {
-    return this.usersRepository.findOne({ where: { id } });
+    return this.usersRepository.findOne({ where: { id }, relations: { company: true } });
   }
 
   findEmployeeByUserId(userId: string): Promise<EmployeeEntity | null> {
     return this.employeesRepository.findOne({ where: { userId } });
+  }
+
+  countActiveByCompany(companyId: string): Promise<number> {
+    return this.usersRepository.count({ where: { companyId, isActive: true } });
   }
 
   async buildAuthenticatedUser(user: UserEntity) {
@@ -40,11 +44,19 @@ export class UsersService {
       employeeId: employee?.id ?? null,
       displayName: user.displayName,
       photoUrl: user.photoUrl,
+      companyId: user.companyId,
     };
   }
 
-  createUser(payload: Partial<UserEntity>) {
+  async createUser(payload: Partial<UserEntity>) {
     return this.usersRepository.save(this.usersRepository.create(payload));
+  }
+
+  async assertUserLimit(companyId: string, maxUsers: number) {
+    const currentCount = await this.countActiveByCompany(companyId);
+    if (currentCount >= maxUsers) {
+      throw new BadRequestException('当前试用套餐的用户数已达上限，无法继续添加用户。');
+    }
   }
 
   async touchLastLogin(userId: string): Promise<void> {

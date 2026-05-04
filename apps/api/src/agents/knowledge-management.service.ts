@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { paginateQuery } from '../common/utils/pagination';
 import { KnowledgeBaseArticleEntity } from './agent-support.entities';
 import { DocumentRagService } from './document-rag.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CreateKnowledgeArticleDto,
   KnowledgeArticleListQueryDto,
@@ -63,11 +64,14 @@ export class KnowledgeManagementService {
     @InjectRepository(KnowledgeBaseArticleEntity)
     private readonly knowledgeBaseRepository: Repository<KnowledgeBaseArticleEntity>,
     private readonly documentRagService: DocumentRagService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   listArticles(query: KnowledgeArticleListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.knowledgeBaseRepository
       .createQueryBuilder('article')
+      .where('article.company_id = :companyId', { companyId })
       .orderBy('article.updatedAt', 'DESC')
       .addOrderBy('article.createdAt', 'DESC');
 
@@ -92,7 +96,8 @@ export class KnowledgeManagementService {
   }
 
   async getArticle(id: string) {
-    const article = await this.knowledgeBaseRepository.findOne({ where: { id } });
+    const companyId = this.tenantContext.getCompanyId();
+    const article = await this.knowledgeBaseRepository.findOne({ where: { id, companyId } });
     if (!article) {
       throw new NotFoundException('未找到知识库条目。');
     }
@@ -101,9 +106,11 @@ export class KnowledgeManagementService {
   }
 
   createArticle(payload: CreateKnowledgeArticleDto) {
+    const companyId = this.tenantContext.getCompanyId();
     return this.knowledgeBaseRepository.save(
       this.knowledgeBaseRepository.create({
         ...payload,
+        companyId,
         tags: payload.tags ?? [],
         isPublished: payload.isPublished ?? true,
       }),

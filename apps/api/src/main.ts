@@ -3,6 +3,7 @@ import './config/env';
 import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { resolve } from 'node:path';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
@@ -43,6 +44,25 @@ async function bootstrap() {
       response.setHeader('Cache-Control', 'private, max-age=86400');
     },
   });
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('HR Agent System API')
+    .setDescription('企业人力资源智能管理系统 API 文档')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .addTag('auth', '认证与授权')
+    .addTag('companies', '企业管理')
+    .addTag('organization', '组织架构')
+    .addTag('recruitment', '招聘协同')
+    .addTag('attendance', '考勤假期')
+    .addTag('performance', '绩效评估')
+    .addTag('payroll', '薪酬管理')
+    .addTag('self-service', '员工自助')
+    .addTag('agent', 'AI 智能体')
+    .addTag('overview', '数据看板')
+    .build();
+  const swaggerDoc = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, swaggerDoc);
 
   await app.listen(getPort(), getHost());
 }

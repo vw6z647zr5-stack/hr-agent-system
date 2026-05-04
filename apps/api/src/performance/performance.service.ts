@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { paginateQuery } from '../common/utils/pagination';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CreatePerformanceCycleDto,
   CreatePerformanceGoalDto,
@@ -26,10 +27,15 @@ export class PerformanceService {
     private readonly goalsRepository: Repository<PerformanceGoalEntity>,
     @InjectRepository(PerformanceReviewEntity)
     private readonly reviewsRepository: Repository<PerformanceReviewEntity>,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async listPerformanceCycles(query: ListQueryDto) {
-    const builder = this.cyclesRepository.createQueryBuilder('cycle').orderBy('cycle.startDate', 'DESC');
+    const companyId = this.tenantContext.getCompanyId();
+    const builder = this.cyclesRepository
+      .createQueryBuilder('cycle')
+      .where('cycle.company_id = :companyId', { companyId })
+      .orderBy('cycle.startDate', 'DESC');
 
     if (query.search) {
       builder.andWhere('cycle.name ILIKE :search', { search: `%${query.search}%` });
@@ -43,7 +49,8 @@ export class PerformanceService {
   }
 
   async getPerformanceCycle(id: string) {
-    const entity = await this.cyclesRepository.findOne({ where: { id } });
+    const companyId = this.tenantContext.getCompanyId();
+    const entity = await this.cyclesRepository.findOne({ where: { id, companyId } });
     if (!entity) {
       throw new NotFoundException('未找到绩效周期。');
     }

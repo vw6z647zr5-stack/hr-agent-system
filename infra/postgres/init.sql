@@ -1,31 +1,70 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Companies (tenants)
+CREATE TABLE IF NOT EXISTS companies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR(120) NOT NULL,
+  industry VARCHAR(40) NOT NULL DEFAULT 'it',
+  size VARCHAR(20) NOT NULL DEFAULT '1-50',
+  contact_name VARCHAR(120) NOT NULL DEFAULT '',
+  contact_email VARCHAR(160) NOT NULL,
+  contact_phone VARCHAR(40) NOT NULL DEFAULT '',
+  trial_ends_at TIMESTAMPTZ NOT NULL,
+  max_users INTEGER NOT NULL DEFAULT 20,
+  features JSONB NOT NULL DEFAULT '{}'::jsonb,
+  status VARCHAR(20) NOT NULL DEFAULT 'trial',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Audit logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NULL REFERENCES companies(id) ON DELETE CASCADE,
+  user_id UUID NULL,
+  action VARCHAR(80) NOT NULL,
+  entity_type VARCHAR(120) NOT NULL DEFAULT '',
+  entity_id UUID NULL,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_logs_company_id ON audit_logs(company_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+
 CREATE TABLE IF NOT EXISTS departments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   parent_id UUID NULL,
   name VARCHAR(120) NOT NULL,
-  code VARCHAR(60) NOT NULL UNIQUE,
+  code VARCHAR(60) NOT NULL,
   manager_employee_id UUID NULL,
   description TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT departments_company_code_key UNIQUE (company_id, code)
 );
 
 CREATE TABLE IF NOT EXISTS positions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   department_id UUID NULL REFERENCES departments(id) ON DELETE SET NULL,
   name VARCHAR(120) NOT NULL,
-  code VARCHAR(60) NOT NULL UNIQUE,
+  code VARCHAR(60) NOT NULL,
   level VARCHAR(50) NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT positions_company_code_key UNIQUE (company_id, code)
 );
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username VARCHAR(60) NOT NULL UNIQUE,
-  email VARCHAR(160) NOT NULL UNIQUE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  username VARCHAR(60) NOT NULL,
+  email VARCHAR(160) NOT NULL,
   display_name VARCHAR(120) NOT NULL,
   password_hash TEXT NOT NULL,
   photo_url TEXT NOT NULL DEFAULT '',
@@ -33,15 +72,18 @@ CREATE TABLE IF NOT EXISTS users (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   last_login_at TIMESTAMPTZ NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT users_company_username_key UNIQUE (company_id, username),
+  CONSTRAINT users_company_email_key UNIQUE (company_id, email)
 );
 
 CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NULL UNIQUE REFERENCES users(id) ON DELETE SET NULL,
-  employee_no VARCHAR(40) NOT NULL UNIQUE,
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+  user_id UUID NULL REFERENCES users(id) ON DELETE SET NULL,
+  employee_no VARCHAR(40) NOT NULL,
   full_name VARCHAR(120) NOT NULL,
-  email VARCHAR(160) NOT NULL UNIQUE,
+  email VARCHAR(160) NOT NULL,
   phone VARCHAR(40) NOT NULL,
   gender VARCHAR(20) NOT NULL DEFAULT 'unknown',
   birth_date DATE NULL,
@@ -64,7 +106,9 @@ CREATE TABLE IF NOT EXISTS employees (
   profile_summary TEXT NOT NULL DEFAULT '',
   avatar_url TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT employees_company_employee_no_key UNIQUE (company_id, employee_no),
+  CONSTRAINT employees_company_email_key UNIQUE (company_id, email)
 );
 
 ALTER TABLE departments
@@ -228,6 +272,7 @@ CREATE TABLE IF NOT EXISTS overtime_requests (
 
 CREATE TABLE IF NOT EXISTS performance_cycles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   name VARCHAR(160) NOT NULL,
   year INTEGER NOT NULL,
   period_type VARCHAR(30) NOT NULL DEFAULT 'quarterly',
@@ -314,6 +359,7 @@ CREATE TABLE IF NOT EXISTS payslips (
 
 CREATE TABLE IF NOT EXISTS knowledge_base_articles (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
   category VARCHAR(80) NOT NULL,
   title VARCHAR(180) NOT NULL,
   question TEXT NOT NULL,
@@ -336,9 +382,14 @@ CREATE TABLE IF NOT EXISTS profile_change_requests (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_departments_parent_id ON departments(parent_id);
+CREATE INDEX IF NOT EXISTS idx_departments_company_id ON departments(company_id);
+CREATE INDEX IF NOT EXISTS idx_positions_company_id ON positions(company_id);
+CREATE INDEX IF NOT EXISTS idx_users_company_id ON users(company_id);
 CREATE INDEX IF NOT EXISTS idx_employees_department_id ON employees(department_id);
 CREATE INDEX IF NOT EXISTS idx_employees_manager_employee_id ON employees(manager_employee_id);
+CREATE INDEX IF NOT EXISTS idx_employees_company_id ON employees(company_id);
 CREATE INDEX IF NOT EXISTS idx_job_postings_status ON job_postings(status);
 CREATE INDEX IF NOT EXISTS idx_candidates_stage ON candidates(stage);
 CREATE INDEX IF NOT EXISTS idx_resumes_candidate_id ON resumes(candidate_id);
@@ -347,5 +398,33 @@ CREATE INDEX IF NOT EXISTS idx_leave_requests_employee_id_status ON leave_reques
 CREATE INDEX IF NOT EXISTS idx_overtime_requests_employee_id_status ON overtime_requests(employee_id, status);
 CREATE INDEX IF NOT EXISTS idx_performance_goals_employee_id ON performance_goals(employee_id);
 CREATE INDEX IF NOT EXISTS idx_performance_reviews_employee_id ON performance_reviews(employee_id);
+CREATE INDEX IF NOT EXISTS idx_performance_cycles_company_id ON performance_cycles(company_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_articles_company_id ON knowledge_base_articles(company_id);
 CREATE INDEX IF NOT EXISTS idx_salary_records_employee_id_month ON salary_records(employee_id, month);
 CREATE INDEX IF NOT EXISTS idx_profile_change_requests_employee_id ON profile_change_requests(employee_id);
+
+-- Covering indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_users_company_active_covering
+  ON users(company_id, is_active)
+  INCLUDE (id, username, email, role, display_name, password_hash);
+
+CREATE INDEX IF NOT EXISTS idx_users_id_company_covering
+  ON users(id)
+  INCLUDE (company_id, username, email, role, is_active);
+
+CREATE INDEX IF NOT EXISTS idx_employees_company_dept_covering
+  ON employees(company_id, department_id)
+  INCLUDE (id, full_name, employee_no, employment_status, position_id);
+
+CREATE INDEX IF NOT EXISTS idx_employees_user_id_covering
+  ON employees(user_id)
+  INCLUDE (id, company_id, full_name, employee_no);
+
+CREATE INDEX IF NOT EXISTS idx_employees_company_status_covering
+  ON employees(company_id, employment_status)
+  INCLUDE (id, full_name, employee_no, department_id, position_id, join_date);
+
+CREATE INDEX IF NOT EXISTS idx_employees_manager_covering
+  ON employees(manager_employee_id)
+  INCLUDE (id, full_name, employee_no, department_id)
+  WHERE manager_employee_id IS NOT NULL;

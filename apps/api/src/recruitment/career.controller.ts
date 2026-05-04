@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Public } from '../common/decorators/public.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -21,6 +22,7 @@ import { AuthenticatedUser, Role } from '../users/user.entity';
 import { CandidatePortalApplicationDto, CandidatePortalChatDto } from './recruitment.dto';
 import { RecruitmentService } from './recruitment.service';
 
+@ApiTags('recruitment')
 @Controller('career')
 export class CareerController {
   constructor(private readonly recruitmentService: RecruitmentService) {}

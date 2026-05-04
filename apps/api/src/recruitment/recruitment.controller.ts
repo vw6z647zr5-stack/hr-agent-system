@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiConsumes, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -33,6 +34,8 @@ import {
 } from './recruitment.dto';
 import { RecruitmentService } from './recruitment.service';
 
+@ApiTags('recruitment')
+@ApiBearerAuth()
 @Controller()
 @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
 export class RecruitmentController {
@@ -104,12 +107,12 @@ export class RecruitmentController {
   }
 
   @Get('resumes/:id/download')
-  async downloadResume(@Param('id') id: string, @Res({ passthrough: true }) response: Response) {
+  async downloadResume(@Param('id') id: string, @Res() response: Response) {
     const file = await this.recruitmentService.getResumeDownload(id);
     response.setHeader('Content-Type', file.contentType);
     response.setHeader('Content-Disposition', buildAttachmentContentDisposition(file.fileName));
     response.setHeader('Cache-Control', 'no-store');
-    return file.buffer;
+    response.send(file.buffer);
   }
 
   @Post('resumes/:id/analyze')

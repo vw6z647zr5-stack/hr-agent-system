@@ -4,6 +4,7 @@ import { Brackets, Repository } from 'typeorm';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { paginateQuery } from '../common/utils/pagination';
 import { StorageService } from '../storage/storage.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CreateDepartmentDto,
   CreateEmployeeContractDto,
@@ -33,12 +34,15 @@ export class OrganizationService {
     @InjectRepository(EmployeeContractEntity)
     private readonly contractsRepository: Repository<EmployeeContractEntity>,
     private readonly storageService: StorageService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async listDepartments(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.departmentsRepository
       .createQueryBuilder('department')
       .leftJoinAndSelect('department.parent', 'parent')
+      .where('department.company_id = :companyId', { companyId })
       .orderBy('department.createdAt', 'DESC');
 
     if (query.search) {
@@ -56,7 +60,9 @@ export class OrganizationService {
   }
 
   async getDepartmentTree() {
+    const companyId = this.tenantContext.getCompanyId();
     const departments = await this.departmentsRepository.find({
+      where: { companyId },
       order: { createdAt: 'ASC' },
     });
     const nodeMap = new Map<string, DepartmentEntity & { children: DepartmentEntity[] }>();
@@ -79,7 +85,8 @@ export class OrganizationService {
   }
 
   async getDepartment(id: string) {
-    const entity = await this.departmentsRepository.findOne({ where: { id }, relations: { parent: true } });
+    const companyId = this.tenantContext.getCompanyId();
+    const entity = await this.departmentsRepository.findOne({ where: { id, companyId }, relations: { parent: true } });
     if (!entity) {
       throw new NotFoundException('未找到部门。');
     }
@@ -88,7 +95,8 @@ export class OrganizationService {
   }
 
   createDepartment(dto: CreateDepartmentDto) {
-    return this.departmentsRepository.save(this.departmentsRepository.create(dto));
+    const companyId = this.tenantContext.getCompanyId();
+    return this.departmentsRepository.save(this.departmentsRepository.create({ ...dto, companyId }));
   }
 
   async updateDepartment(id: string, dto: UpdateDepartmentDto) {
@@ -107,9 +115,11 @@ export class OrganizationService {
   }
 
   async listPositions(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.positionsRepository
       .createQueryBuilder('position')
       .leftJoinAndSelect('position.department', 'department')
+      .where('position.company_id = :companyId', { companyId })
       .orderBy('position.createdAt', 'DESC');
 
     if (query.search) {
@@ -131,7 +141,8 @@ export class OrganizationService {
   }
 
   async getPosition(id: string) {
-    const entity = await this.positionsRepository.findOne({ where: { id }, relations: { department: true } });
+    const companyId = this.tenantContext.getCompanyId();
+    const entity = await this.positionsRepository.findOne({ where: { id, companyId }, relations: { department: true } });
     if (!entity) {
       throw new NotFoundException('未找到岗位。');
     }
@@ -140,7 +151,8 @@ export class OrganizationService {
   }
 
   createPosition(dto: CreatePositionDto) {
-    return this.positionsRepository.save(this.positionsRepository.create(dto));
+    const companyId = this.tenantContext.getCompanyId();
+    return this.positionsRepository.save(this.positionsRepository.create({ ...dto, companyId }));
   }
 
   async updatePosition(id: string, dto: UpdatePositionDto) {
@@ -159,12 +171,14 @@ export class OrganizationService {
   }
 
   async listEmployees(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.employeesRepository
       .createQueryBuilder('employee')
       .leftJoinAndSelect('employee.department', 'department')
       .leftJoinAndSelect('employee.position', 'position')
       .leftJoinAndSelect('employee.manager', 'manager')
       .leftJoinAndSelect('employee.user', 'user')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('employee.createdAt', 'DESC');
 
     if (query.search) {
@@ -189,8 +203,9 @@ export class OrganizationService {
   }
 
   async getEmployee(id: string) {
+    const companyId = this.tenantContext.getCompanyId();
     const entity = await this.employeesRepository.findOne({
-      where: { id },
+      where: { id, companyId },
       relations: { department: true, position: true, manager: true, user: true },
     });
     if (!entity) {
@@ -201,7 +216,8 @@ export class OrganizationService {
   }
 
   createEmployee(dto: CreateEmployeeDto) {
-    return this.employeesRepository.save(this.employeesRepository.create(dto));
+    const companyId = this.tenantContext.getCompanyId();
+    return this.employeesRepository.save(this.employeesRepository.create({ ...dto, companyId }));
   }
 
   async updateEmployee(id: string, dto: UpdateEmployeeDto) {

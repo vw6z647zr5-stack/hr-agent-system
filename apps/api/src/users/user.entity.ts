@@ -1,5 +1,6 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { AuditableEntity } from '../database/base.entity';
+import { CompanyEntity } from '../company/company.entity';
 
 export enum Role {
   ADMIN = 'admin',
@@ -10,11 +11,20 @@ export enum Role {
 }
 
 @Entity({ name: 'users' })
+@Index(['companyId', 'username'], { unique: true })
+@Index(['companyId', 'email'], { unique: true })
 export class UserEntity extends AuditableEntity {
-  @Column({ unique: true, length: 60 })
+  @ManyToOne(() => CompanyEntity, { nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: CompanyEntity;
+
+  @Column({ type: 'uuid', insert: false, update: false })
+  companyId!: string;
+
+  @Column({ length: 60 })
   username!: string;
 
-  @Column({ unique: true, length: 160 })
+  @Column({ length: 160 })
   email!: string;
 
   @Column({ length: 120 })
@@ -45,4 +55,5 @@ export interface AuthenticatedUser {
   displayName: string;
   photoUrl: string;
   sessionId?: string;
+  companyId: string;
 }

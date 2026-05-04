@@ -9,6 +9,7 @@ import { AuthenticatedUser } from '../users/user.entity';
 interface JwtPayload {
   sub: string;
   jti?: string;
+  companyId?: string;
 }
 
 @Injectable()
@@ -35,6 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       ...(await this.usersService.buildAuthenticatedUser(user)),
       sessionId: payload.jti,
+      companyId: user.companyId,
     };
   }
 }

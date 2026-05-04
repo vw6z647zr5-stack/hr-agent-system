@@ -21,6 +21,7 @@ import {
 import { PayslipEntity } from '../payroll/payroll.entities';
 import { RecruitmentService } from '../recruitment/recruitment.service';
 import { SelfServiceService } from '../self-service/self-service.service';
+import { TenantContext } from '../tenant/tenant.context';
 import { AuthenticatedUser, Role } from '../users/user.entity';
 
 @Injectable()
@@ -53,6 +54,7 @@ export class OverviewService {
     private readonly recruitmentService: RecruitmentService,
     private readonly agentService: AgentService,
     private readonly selfServiceService: SelfServiceService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async getDashboard(user: AuthenticatedUser) {
@@ -66,6 +68,7 @@ export class OverviewService {
   private async getManagementDashboard() {
     const now = new Date();
     const lastThirtyDays = this.toDateKey(this.addDays(now, -30));
+    const companyId = this.tenantContext.getCompanyId();
 
     const [
       departments,
@@ -84,65 +87,83 @@ export class OverviewService {
       performanceInsights,
       highRiskList,
     ] = await Promise.all([
-      this.departmentsRepository.find({ order: { createdAt: 'ASC' } }),
-      this.positionsRepository.find({ order: { createdAt: 'ASC' } }),
+      this.departmentsRepository.find({ where: { companyId }, order: { createdAt: 'ASC' } }),
+      this.positionsRepository.find({ where: { companyId }, order: { createdAt: 'ASC' } }),
       this.employeesRepository.find({
+        where: { companyId },
         relations: { department: true, position: true, manager: true, user: true },
         order: { createdAt: 'DESC' },
       }),
-      this.contractsRepository.find({
-        relations: { employee: { department: true } },
-        order: { endDate: 'ASC', createdAt: 'DESC' },
-      }),
+      this.contractsRepository
+        .createQueryBuilder('contract')
+        .leftJoinAndSelect('contract.employee', 'employee')
+        .leftJoinAndSelect('employee.department', 'department')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('contract.endDate', 'ASC')
+        .addOrderBy('contract.createdAt', 'DESC')
+        .getMany(),
       this.attendanceRepository
         .createQueryBuilder('attendance')
         .leftJoinAndSelect('attendance.employee', 'employee')
         .where('attendance.workDate >= :lastThirtyDays', { lastThirtyDays })
+        .andWhere('employee.company_id = :companyId', { companyId })
         .andWhere('attendance.status = :status OR attendance.lateMinutes > 0 OR attendance.undertimeMinutes > 0', {
           status: 'anomaly',
         })
         .orderBy('attendance.workDate', 'DESC')
         .addOrderBy('attendance.createdAt', 'DESC')
         .getMany(),
-      this.leaveRequestsRepository.find({
-        relations: { employee: true, approver: true },
-        order: { createdAt: 'DESC' },
-        take: 24,
-      }),
-      this.overtimeRequestsRepository.find({
-        relations: { employee: true, approver: true },
-        order: { createdAt: 'DESC' },
-        take: 24,
-      }),
+      this.leaveRequestsRepository
+        .createQueryBuilder('leaveRequest')
+        .leftJoinAndSelect('leaveRequest.employee', 'employee')
+        .leftJoinAndSelect('leaveRequest.approver', 'approver')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('leaveRequest.createdAt', 'DESC')
+        .take(24)
+        .getMany(),
+      this.overtimeRequestsRepository
+        .createQueryBuilder('overtime')
+        .leftJoinAndSelect('overtime.employee', 'employee')
+        .leftJoinAndSelect('overtime.approver', 'approver')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('overtime.createdAt', 'DESC')
+        .take(24)
+        .getMany(),
       this.cyclesRepository.find({
+        where: { companyId },
         order: { startDate: 'DESC', createdAt: 'DESC' },
         take: 6,
       }),
-      this.reviewsRepository.find({
-        relations: { employee: true, cycle: true },
-        order: { createdAt: 'DESC' },
-        take: 18,
-      }),
-      this.payslipsRepository.find({
-        relations: { employee: true, salaryRecord: true },
-        order: { issuedAt: 'DESC' },
-        take: 18,
-      }),
+      this.reviewsRepository
+        .createQueryBuilder('review')
+        .leftJoinAndSelect('review.employee', 'employee')
+        .leftJoinAndSelect('review.cycle', 'cycle')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('review.createdAt', 'DESC')
+        .take(18)
+        .getMany(),
+      this.payslipsRepository
+        .createQueryBuilder('payslip')
+        .leftJoinAndSelect('payslip.employee', 'employee')
+        .leftJoinAndSelect('payslip.salaryRecord', 'salaryRecord')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('payslip.issuedAt', 'DESC')
+        .take(18)
+        .getMany(),
       this.knowledgeBaseRepository.find({
-        where: { isPublished: true },
+        where: { companyId, isPublished: true },
         order: { createdAt: 'DESC' },
         take: 6,
       }),
-      this.profileChangeRepository.find({
-        relations: {
-          employee: {
-            department: true,
-          },
-          reviewer: true,
-        },
-        order: { createdAt: 'DESC' },
-        take: 18,
-      }),
+      this.profileChangeRepository
+        .createQueryBuilder('profileChange')
+        .leftJoinAndSelect('profileChange.employee', 'employee')
+        .leftJoinAndSelect('employee.department', 'department')
+        .leftJoinAndSelect('profileChange.reviewer', 'reviewer')
+        .where('employee.company_id = :companyId', { companyId })
+        .orderBy('profileChange.createdAt', 'DESC')
+        .take(18)
+        .getMany(),
       this.recruitmentService.getRecruitmentDashboard(),
       this.agentService.getPerformanceInsights(),
       this.agentService.getHighRiskAttritionList(),

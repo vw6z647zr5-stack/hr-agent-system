@@ -5,6 +5,8 @@ import {
   LeaveRequestEntity,
   OvertimeRequestEntity,
 } from '../attendance/attendance.entities';
+import { AuditLogEntity } from '../audit/audit.entity';
+import { CompanyEntity } from '../company/company.entity';
 import {
   DepartmentEntity,
   EmployeeContractEntity,
@@ -27,6 +29,7 @@ import {
 import { UserEntity } from '../users/user.entity';
 
 export const DATABASE_ENTITIES = [
+  CompanyEntity,
   UserEntity,
   DepartmentEntity,
   PositionEntity,
@@ -49,4 +52,5 @@ export const DATABASE_ENTITIES = [
   PayslipEntity,
   KnowledgeBaseArticleEntity,
   ProfileChangeRequestEntity,
+  AuditLogEntity,
 ] as const;

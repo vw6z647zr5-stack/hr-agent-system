@@ -152,14 +152,25 @@ export function getCorsOptions() {
   };
 }
 
-export function securityHeadersMiddleware(_request: Request, response: Response, next: NextFunction) {
+export function securityHeadersMiddleware(request: Request, response: Response, next: NextFunction) {
   response.setHeader('X-Content-Type-Options', 'nosniff');
-  response.setHeader('X-Frame-Options', 'DENY');
   response.setHeader('Referrer-Policy', 'no-referrer');
   response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   response.setHeader('Cross-Origin-Resource-Policy', 'same-site');
   response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  response.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+
+  const path = request.path || request.url || '/';
+  if (path.startsWith('/api/docs')) {
+    response.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    response.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:",
+    );
+  } else {
+    response.setHeader('X-Frame-Options', 'DENY');
+    response.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  }
+
   next();
 }
 

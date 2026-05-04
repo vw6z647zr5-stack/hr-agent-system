@@ -17,7 +17,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-    const normalized = this.normalizeException(exception);
+    const normalized = this.normalizeException(exception, request);
     const status = normalized.getStatus();
     const payload = normalized.getResponse();
 
@@ -29,7 +29,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     });
   }
 
-  private normalizeException(exception: unknown): HttpException {
+  private normalizeException(exception: unknown, request: Request): HttpException {
     if (exception instanceof HttpException) {
       return exception;
     }
@@ -39,9 +39,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
     }
 
     if (exception instanceof QueryFailedError) {
-      return this.normalizeQueryFailedError(exception);
+      return this.normalizeQueryFailedError(exception, request);
     }
 
+    console.error('[UnhandledError]', request.method, request.url, exception);
     return new InternalServerErrorException('服务器内部错误，请稍后再试。');
   }
 
@@ -57,8 +58,17 @@ export class ApiExceptionFilter implements ExceptionFilter {
     return new BadRequestException('上传文件不合法。');
   }
 
-  private normalizeQueryFailedError(error: QueryFailedError) {
-    const driverError = error.driverError as { code?: string } | undefined;
+  private normalizeQueryFailedError(error: QueryFailedError, request: Request) {
+    const driverError = error.driverError as { code?: string; detail?: string; message?: string; table?: string } | undefined;
+
+    console.error(
+      '[QueryFailedError]',
+      request.method,
+      request.url,
+      'code:', driverError?.code,
+      'table:', driverError?.table,
+      'detail:', driverError?.detail ?? driverError?.message ?? error.message,
+    );
 
     if (driverError?.code === '23505') {
       return new ConflictException('记录已存在，请检查编号、邮箱或名称是否重复。');

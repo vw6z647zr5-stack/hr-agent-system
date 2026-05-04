@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { ListQueryDto } from '../common/dto/list-query.dto';
@@ -16,6 +17,8 @@ import {
 } from './payroll.dto';
 import { PayrollService } from './payroll.service';
 
+@ApiTags('payroll')
+@ApiBearerAuth()
 @Controller()
 @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
 export class PayrollController {
@@ -104,13 +107,13 @@ export class PayrollController {
   async downloadPayslip(
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Res({ passthrough: true }) response: Response,
+    @Res() response: Response,
   ) {
     const file = await this.payrollService.getPayslipDownload(id, user);
     response.setHeader('Content-Type', file.contentType);
     response.setHeader('Content-Disposition', buildAttachmentContentDisposition(file.fileName));
     response.setHeader('Cache-Control', 'no-store');
-    return file.buffer;
+    response.send(file.buffer);
   }
 
   /** 创建工资单。 */

@@ -1,9 +1,17 @@
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
 import { AuditableEntity } from '../database/base.entity';
 import { EmployeeEntity } from '../organization/organization.entities';
+import { CompanyEntity } from '../company/company.entity';
 
 @Entity({ name: 'performance_cycles' })
 export class PerformanceCycleEntity extends AuditableEntity {
+  @Column({ type: 'uuid' })
+  companyId!: string;
+
+  @ManyToOne(() => CompanyEntity, { nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: CompanyEntity;
+
   @Column({ length: 160 })
   name!: string;
 

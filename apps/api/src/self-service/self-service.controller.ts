@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { buildAttachmentContentDisposition } from '../common/utils/content-disposition';
@@ -13,6 +14,8 @@ import {
 } from './self-service.dto';
 import { SelfServiceService } from './self-service.service';
 
+@ApiTags('self-service')
+@ApiBearerAuth()
 @Controller('self-service')
 export class SelfServiceController {
   constructor(private readonly selfServiceService: SelfServiceService) {}
@@ -51,24 +54,24 @@ export class SelfServiceController {
   async downloadMyPayslip(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Res({ passthrough: true }) response: Response,
+    @Res() response: Response,
   ) {
     const file = await this.selfServiceService.downloadMyPayslip(user, id);
     response.setHeader('Content-Type', file.contentType);
     response.setHeader('Content-Disposition', buildAttachmentContentDisposition(file.fileName));
     response.setHeader('Cache-Control', 'no-store');
-    return file.buffer;
+    response.send(file.buffer);
   }
 
   /** 下载当前员工有效劳动合同。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE)
   @Get('contracts/active/download')
-  async downloadMyActiveContract(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) response: Response) {
+  async downloadMyActiveContract(@CurrentUser() user: AuthenticatedUser, @Res() response: Response) {
     const file = await this.selfServiceService.downloadMyActiveContract(user);
     response.setHeader('Content-Type', file.contentType);
     response.setHeader('Content-Disposition', buildAttachmentContentDisposition(file.fileName));
     response.setHeader('Cache-Control', 'no-store');
-    return file.buffer;
+    response.send(file.buffer);
   }
 
   /** 以当前员工身份提交请假申请。 */

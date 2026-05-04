@@ -4,6 +4,7 @@ import { Brackets, Repository } from 'typeorm';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { paginateQuery } from '../common/utils/pagination';
 import { RedisService } from '../redis/redis.service';
+import { TenantContext } from '../tenant/tenant.context';
 import {
   CreateAttendanceDto,
   CreateLeaveBalanceDto,
@@ -33,12 +34,15 @@ export class AttendanceService {
     @InjectRepository(OvertimeRequestEntity)
     private readonly overtimeRepository: Repository<OvertimeRequestEntity>,
     private readonly redisService: RedisService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async listAttendances(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.attendanceRepository
       .createQueryBuilder('attendance')
       .leftJoinAndSelect('attendance.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('attendance.workDate', 'DESC');
 
     if (query.search) {
@@ -64,10 +68,12 @@ export class AttendanceService {
   }
 
   async listAttendanceAnomalies(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.attendanceRepository
       .createQueryBuilder('attendance')
       .leftJoinAndSelect('attendance.employee', 'employee')
-      .where('attendance.lateMinutes > 0 OR attendance.undertimeMinutes > 0 OR attendance.status = :status', {
+      .where('employee.company_id = :companyId', { companyId })
+      .andWhere('attendance.lateMinutes > 0 OR attendance.undertimeMinutes > 0 OR attendance.status = :status', {
         status: 'anomaly',
       })
       .orderBy('attendance.workDate', 'DESC');
@@ -171,10 +177,12 @@ export class AttendanceService {
   }
 
   async listLeaveRequests(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.leaveRequestsRepository
       .createQueryBuilder('leaveRequest')
       .leftJoinAndSelect('leaveRequest.employee', 'employee')
       .leftJoinAndSelect('leaveRequest.approver', 'approver')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('leaveRequest.createdAt', 'DESC');
 
     if (query.search) {
@@ -245,9 +253,11 @@ export class AttendanceService {
   }
 
   async listLeaveBalances(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.leaveBalancesRepository
       .createQueryBuilder('leaveBalance')
       .leftJoinAndSelect('leaveBalance.employee', 'employee')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('leaveBalance.year', 'DESC');
 
     if (query.employeeId) {
@@ -310,10 +320,12 @@ export class AttendanceService {
   }
 
   async listOvertimeRequests(query: ListQueryDto) {
+    const companyId = this.tenantContext.getCompanyId();
     const builder = this.overtimeRepository
       .createQueryBuilder('overtime')
       .leftJoinAndSelect('overtime.employee', 'employee')
       .leftJoinAndSelect('overtime.approver', 'approver')
+      .where('employee.company_id = :companyId', { companyId })
       .orderBy('overtime.createdAt', 'DESC');
 
     if (query.employeeId) {

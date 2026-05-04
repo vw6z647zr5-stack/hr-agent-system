@@ -13,6 +13,7 @@ import { PayslipEntity } from '../payroll/payroll.entities';
 import { PerformanceGoalEntity, PerformanceReviewEntity } from '../performance/performance.entities';
 import { RedisService } from '../redis/redis.service';
 import { StorageService } from '../storage/storage.service';
+import { TenantContext } from '../tenant/tenant.context';
 import { AuthenticatedUser, Role } from '../users/user.entity';
 import {
   CreateProfileChangeRequestDto,
@@ -51,10 +52,12 @@ export class SelfServiceService {
     private readonly knowledgeBaseRepository: Repository<KnowledgeBaseArticleEntity>,
     private readonly redisService: RedisService,
     private readonly storageService: StorageService,
+    private readonly tenantContext: TenantContext,
   ) {}
 
   async getDashboard(user: AuthenticatedUser) {
     const employeeId = this.requireEmployeeId(user);
+    const companyId = this.tenantContext.getCompanyId();
     const cacheKey = this.getDashboardCacheKey(employeeId);
     const cached = await this.redisService.getJson<Record<string, unknown>>(cacheKey);
 
@@ -64,7 +67,7 @@ export class SelfServiceService {
     }
 
     const employee = await this.employeesRepository.findOne({
-      where: { id: employeeId },
+      where: { id: employeeId, companyId },
       relations: { department: true, position: true, manager: true, user: true },
     });
 
@@ -138,7 +141,7 @@ export class SelfServiceService {
         take: 8,
       }),
       this.knowledgeBaseRepository.find({
-        where: { isPublished: true },
+        where: { companyId, isPublished: true },
         order: { createdAt: 'DESC' },
         take: 4,
       }),
@@ -344,8 +347,9 @@ export class SelfServiceService {
 
   async getMyProfile(user: AuthenticatedUser) {
     const employeeId = this.requireEmployeeId(user);
+    const companyId = this.tenantContext.getCompanyId();
     const employee = await this.employeesRepository.findOne({
-      where: { id: employeeId },
+      where: { id: employeeId, companyId },
       relations: { department: true, position: true, manager: true, user: true },
     });
 

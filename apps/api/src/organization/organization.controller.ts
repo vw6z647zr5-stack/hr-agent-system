@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Roles } from '../common/decorators/roles.decorator';
 import { buildAttachmentContentDisposition } from '../common/utils/content-disposition';
 import { Role } from '../users/user.entity';
@@ -16,6 +17,8 @@ import {
 import { OrganizationService } from './organization.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 
+@ApiTags('organization')
+@ApiBearerAuth()
 @Controller()
 @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
 export class OrganizationController {
@@ -131,12 +134,12 @@ export class OrganizationController {
 
   /** 下载员工劳动合同文件。 */
   @Get('employee-contracts/:id/download')
-  async downloadEmployeeContract(@Param('id') id: string, @Res({ passthrough: true }) response: Response) {
+  async downloadEmployeeContract(@Param('id') id: string, @Res() response: Response) {
     const file = await this.organizationService.getEmployeeContractDownload(id);
     response.setHeader('Content-Type', file.contentType);
     response.setHeader('Content-Disposition', buildAttachmentContentDisposition(file.fileName));
     response.setHeader('Cache-Control', 'no-store');
-    return file.buffer;
+    response.send(file.buffer);
   }
 
   /** 创建员工劳动合同。 */

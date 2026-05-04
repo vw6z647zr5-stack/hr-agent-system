@@ -60,23 +60,35 @@ export function AppLayout() {
   }, []);
 
   const menuItems = useMemo(() => {
+    const features = user?.features ?? {};
+    const featureGate = (feature: string) => features[feature] !== false;
+
     const managementItems = resourceGroups
-      .map((group) => ({
-        key: `group-${group.key}`,
-        label: group.label,
-        icon: <TeamOutlined />,
-        children: group.items
-          .filter((item) => (user ? item.roles.includes(user.role) : false))
-          .map((item) => ({ key: item.path, label: item.label })),
-      }))
+      .map((group) => {
+        // payroll module is feature-gated
+        if (group.key === 'payroll' && !featureGate('payroll')) {
+          return { key: `group-${group.key}`, label: group.label, icon: <TeamOutlined />, children: [] };
+        }
+        return {
+          key: `group-${group.key}`,
+          label: group.label,
+          icon: <TeamOutlined />,
+          children: group.items
+            .filter((item) => (user ? item.roles.includes(user.role) : false))
+            .map((item) => ({ key: item.path, label: item.label })),
+        };
+      })
       .filter((group) => group.children.length > 0);
 
     const items: any[] = [
       { key: '/dashboard', icon: <DashboardOutlined />, label: '总览看板' },
     ];
 
-    if (user && ['admin', 'hr', 'manager'].includes(user.role)) {
+    if (user && ['admin', 'hr', 'manager'].includes(user.role) && featureGate('aiAgent')) {
       items.push({ key: '/knowledge-center', icon: <BookOutlined />, label: '知识中心' });
+    }
+
+    if (user && ['admin', 'hr', 'manager'].includes(user.role) && featureGate('recruitment')) {
       items.push({ key: '/recruitment-workbench', icon: <RadarChartOutlined />, label: '招聘工作台' });
     }
 
