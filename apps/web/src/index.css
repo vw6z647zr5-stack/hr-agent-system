@@ -1,0 +1,304 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Design tokens ---- */
+:root {
+  --color-ink: #112138;
+  --color-brand: #0f766e;
+  --color-brand-light: #14b8a6;
+  --color-mist: #f5f7fb;
+  --color-sand: #f3eadc;
+  --color-accent-blue: #0ea5e9;
+  --color-accent-purple: #7c3aed;
+  --color-accent-amber: #f59e0b;
+  --color-accent-red: #dc2626;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 24px rgba(15, 23, 42, 0.05);
+  --shadow-card-hover: 0 12px 28px rgba(15, 23, 42, 0.08);
+  --shadow-panel: 0 14px 34px rgba(15, 23, 42, 0.08);
+  --shadow-dropdown: 0 12px 32px rgba(15, 23, 42, 0.14);
+
+  --transition-base: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+
+  color: var(--color-ink);
+  background: var(--color-mist);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---- Base ---- */
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #f8fafc 0%, #f5f7fb 46%, #eef2f7 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ---- Typography helpers ---- */
+.text-balance {
+  text-wrap: balance;
+}
+
+/* ---- Ant Design overrides ---- */
+.ant-card {
+  border-radius: var(--radius-lg);
+  border-color: #e5e7eb;
+  box-shadow: var(--shadow-card);
+}
+
+.rounded-2xl,
+.rounded-3xl,
+.rounded-\[2rem\],
+.rounded-\[40px\] {
+  border-radius: var(--radius-xl) !important;
+}
+
+.tracking-tight,
+.tracking-wide,
+.tracking-wider {
+  letter-spacing: 0 !important;
+}
+
+.ant-table-wrapper .ant-table {
+  border-radius: var(--radius-lg);
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
+
+.ant-drawer-content {
+  border-top-left-radius: var(--radius-xl);
+  border-bottom-left-radius: var(--radius-xl);
+}
+
+.ant-btn {
+  border-radius: 10px;
+  transition: all var(--transition-base);
+}
+
+.ant-btn-primary {
+  box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+}
+
+.ant-btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(15, 118, 110, 0.35);
+}
+
+.ant-tag {
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.ant-menu-inline .ant-menu-item {
+  border-radius: var(--radius-md);
+  margin: 2px 0;
+}
+
+.ant-select-selector,
+.ant-input,
+.ant-input-number,
+.ant-picker {
+  border-radius: 10px !important;
+}
+
+.ant-modal-content {
+  border-radius: var(--radius-xl);
+}
+
+.ant-popover-inner {
+  border-radius: var(--radius-lg);
+}
+
+.ant-card .ant-card-head {
+  border-bottom-color: #eef2f7;
+}
+
+.ant-list .ant-list-item {
+  padding-block: 14px;
+}
+
+/* ---- Sidebar scroll ---- */
+.sidebar-menu-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  min-height: 40px;
+  transition: background 0.2s;
+}
+
+.sidebar-menu-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ---- Shimmer skeleton animation ---- */
+.animate-shimmer {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 200% 100%;
+}
+
+/* ---- Pulse ring for live indicators ---- */
+.pulse-ring {
+  position: relative;
+}
+
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  background: inherit;
+  opacity: 0.4;
+  animation: pulse-ring 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ---- Fade-up entrance ---- */
+.animate-fade-up {
+  animation: fade-up 0.4s ease-out both;
+}
+
+.stagger-1 { animation-delay: 0.05s; }
+.stagger-2 { animation-delay: 0.10s; }
+.stagger-3 { animation-delay: 0.15s; }
+.stagger-4 { animation-delay: 0.20s; }
+.stagger-5 { animation-delay: 0.25s; }
+.stagger-6 { animation-delay: 0.30s; }
+
+/* ---- Glass card ---- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+/* ---- Gradient text ---- */
+.gradient-text {
+  background: linear-gradient(135deg, #0f766e, #0ea5e9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---- Stat value emphasis ---- */
+.stat-ring {
+  filter: drop-shadow(0 2px 8px rgba(15, 118, 110, 0.2));
+}
+
+/* ---- Improved progress bars ---- */
+.ant-progress-bg {
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* ---- Improved tabs ---- */
+.ant-tabs-card > .ant-tabs-nav .ant-tabs-tab {
+  border-radius: 12px 12px 0 0;
+}
+
+/* ---- Better form labels ---- */
+.ant-form-item-label > label {
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+/* ---- Table row hover ---- */
+.ant-table-tbody > tr.ant-table-row:hover > td {
+  background: rgba(15, 118, 110, 0.03) !important;
+}
+
+/* ---- Improved segmented control ---- */
+.ant-segmented {
+  border-radius: 12px;
+  padding: 3px;
+}
+
+.ant-segmented .ant-segmented-item {
+  border-radius: 10px;
+}
+
+/* ---- Notification badge ---- */
+.notification-badge .ant-badge-count {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* ---- Responsive sidebar ---- */
+@media (max-width: 991px) {
+  .ant-drawer-content {
+    border-top-left-radius: var(--radius-lg);
+    border-bottom-left-radius: var(--radius-lg);
+  }
+}
+
+/* ---- Print styles ---- */
+@media print {
+  body {
+    background: white;
+  }
+
+  .ant-layout-sider,
+  .ant-layout-header,
+  .no-print {
+    display: none !important;
+  }
+
+  .ant-card {
+    box-shadow: none;
+    border: 1px solid #e2e8f0;
+    break-inside: avoid;
+  }
+
+  .ant-layout-content {
+    padding: 0 !important;
+  }
+}
+
+/* ---- Scrollbar global ---- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}

@@ -1,0 +1,79 @@
+.knowledge-page {
+  padding-bottom: 160rpx;
+}
+
+.chat-list {
+  height: calc(100vh - 370rpx);
+  box-sizing: border-box;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 20rpx;
+}
+
+.message.user {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 78%;
+  border-radius: 16rpx;
+  background: #ffffff;
+  padding: 22rpx;
+  line-height: 1.65;
+  box-shadow: 0 8rpx 24rpx rgba(15, 23, 42, 0.05);
+}
+
+.message.user .bubble {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+.references {
+  margin-top: 18rpx;
+  border-top: 1rpx solid rgba(15, 118, 110, 0.16);
+  padding-top: 14rpx;
+  color: #475569;
+  font-size: 24rpx;
+}
+
+.reference-title {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.reference-item {
+  margin-top: 8rpx;
+}
+
+.quick-questions {
+  display: flex;
+  gap: 12rpx;
+  margin: 18rpx 0;
+}
+
+.quick {
+  flex: 1;
+  font-size: 24rpx;
+}
+
+.composer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  gap: 14rpx;
+  border-top: 1rpx solid #e2e8f0;
+  background: #ffffff;
+  padding: 18rpx 24rpx 36rpx;
+}
+
+.composer-input {
+  flex: 1;
+}
+
+.send-button {
+  width: 150rpx;
+}

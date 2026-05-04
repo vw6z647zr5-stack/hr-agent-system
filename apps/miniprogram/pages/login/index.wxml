@@ -1,0 +1,33 @@
+<view class="page login-page">
+  <view class="hero">
+    <view class="title">智能人事小程序</view>
+    <view class="subtitle">员工自助、候选人投递、知识问答和移动审批入口</view>
+  </view>
+
+  <view class="card section">
+    <view class="form-item">
+      <view class="label">接口地址</view>
+      <input class="input" value="{{apiBase}}" bindinput="onApiBaseInput" placeholder="例如：http://127.0.0.1:3000/api" />
+    </view>
+    <view class="form-item">
+      <view class="label">用户名</view>
+      <input class="input" value="{{username}}" bindinput="onUsernameInput" placeholder="请输入用户名" />
+    </view>
+    <view class="form-item">
+      <view class="label">密码</view>
+      <input class="input" password value="{{password}}" bindinput="onPasswordInput" placeholder="请输入密码" />
+    </view>
+    <button class="button-primary" loading="{{submitting}}" bindtap="submitLogin">登录</button>
+  </view>
+
+  <view class="card">
+    <view class="title small-title">演示账号</view>
+    <view class="account-grid">
+      <button class="button-plain compact" data-username="employee_li" bindtap="useDemoAccount">员工</button>
+      <button class="button-plain compact" data-username="manager_zhang" bindtap="useDemoAccount">经理</button>
+      <button class="button-plain compact" data-username="hr_admin" bindtap="useDemoAccount">人力资源</button>
+      <button class="button-plain compact" data-username="candidate_demo" bindtap="useDemoAccount">候选人</button>
+    </view>
+    <view class="subtitle">演示账号只会填入用户名，请输入对应密码后登录。</view>
+  </view>
+</view>

@@ -1,0 +1,109 @@
+<view class="page">
+  <view class="card section">
+    <view class="title">{{employee.fullName || '员工自助'}}</view>
+    <view class="subtitle">{{employee.departmentName}} · {{employee.positionName}}</view>
+  </view>
+
+  <view class="grid section">
+    <view class="metric">
+      <view class="metric-value">{{annualLeaveRemaining}}</view>
+      <view class="metric-label">剩余年假</view>
+    </view>
+    <view class="metric">
+      <view class="metric-value">{{latestPayslip}}</view>
+      <view class="metric-label">最新工资单</view>
+    </view>
+  </view>
+
+  <view class="card section">
+    <view class="tabs">
+      <view class="tab {{activeTab === 'leave' ? 'active' : ''}}" data-tab="leave" bindtap="switchTab">请假</view>
+      <view class="tab {{activeTab === 'overtime' ? 'active' : ''}}" data-tab="overtime" bindtap="switchTab">加班</view>
+      <view class="tab {{activeTab === 'profile' ? 'active' : ''}}" data-tab="profile" bindtap="switchTab">资料</view>
+    </view>
+
+    <view wx:if="{{activeTab === 'leave'}}">
+      <view class="form-item">
+        <view class="label">假期类型</view>
+        <picker range="{{leaveTypeOptions}}" range-key="label" bindchange="onLeaveTypeChange">
+          <view class="picker">{{leaveTypeLabel}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">开始日期</view>
+        <picker mode="date" value="{{leaveStartDate}}" bindchange="onLeaveStartDateChange">
+          <view class="picker">{{leaveStartDate || '请选择开始日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">结束日期</view>
+        <picker mode="date" value="{{leaveEndDate}}" bindchange="onLeaveEndDateChange">
+          <view class="picker">{{leaveEndDate || '请选择结束日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">请假天数</view>
+        <input class="input" type="digit" value="{{durationDays}}" bindinput="onDurationInput" placeholder="例如：1" />
+      </view>
+      <view class="form-item">
+        <view class="label">请假原因</view>
+        <textarea class="textarea" value="{{leaveReason}}" bindinput="onLeaveReasonInput" placeholder="请填写原因" />
+      </view>
+      <button class="button-primary" loading="{{submitting}}" bindtap="submitLeave">提交请假</button>
+    </view>
+
+    <view wx:if="{{activeTab === 'overtime'}}">
+      <view class="form-item">
+        <view class="label">加班日期</view>
+        <picker mode="date" value="{{overtimeDate}}" bindchange="onOvertimeDateChange">
+          <view class="picker">{{overtimeDate || '请选择加班日期'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">开始时间</view>
+        <picker mode="time" value="{{overtimeStartTime}}" bindchange="onOvertimeStartTimeChange">
+          <view class="picker">{{overtimeStartTime || '请选择开始时间'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">结束时间</view>
+        <picker mode="time" value="{{overtimeEndTime}}" bindchange="onOvertimeEndTimeChange">
+          <view class="picker">{{overtimeEndTime || '请选择结束时间'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <view class="label">加班小时</view>
+        <input class="input" type="digit" value="{{overtimeHours}}" bindinput="onOvertimeHoursInput" placeholder="例如：2" />
+      </view>
+      <view class="form-item">
+        <view class="label">加班原因</view>
+        <textarea class="textarea" value="{{overtimeReason}}" bindinput="onOvertimeReasonInput" placeholder="请填写原因" />
+      </view>
+      <button class="button-primary" loading="{{submitting}}" bindtap="submitOvertime">提交加班</button>
+    </view>
+
+    <view wx:if="{{activeTab === 'profile'}}">
+      <view class="form-item">
+        <view class="label">手机号</view>
+        <input class="input" value="{{profilePhone}}" bindinput="onProfilePhoneInput" placeholder="请输入新手机号" />
+      </view>
+      <view class="form-item">
+        <view class="label">联系地址</view>
+        <textarea class="textarea" value="{{profileAddress}}" bindinput="onProfileAddressInput" placeholder="请输入新地址" />
+      </view>
+      <button class="button-primary" loading="{{submitting}}" bindtap="submitProfileChange">提交资料变更</button>
+    </view>
+  </view>
+
+  <view class="card section">
+    <view class="title">最近申请</view>
+    <view wx:for="{{recentRequests}}" wx:key="id" class="request-row">
+      <view class="row">
+        <view>{{item.title}}</view>
+        <view class="tag">{{item.statusText}}</view>
+      </view>
+      <view class="subtitle">{{item.detail}}</view>
+    </view>
+    <view wx:if="{{!recentRequests.length}}" class="empty">暂无申请记录</view>
+  </view>
+</view>

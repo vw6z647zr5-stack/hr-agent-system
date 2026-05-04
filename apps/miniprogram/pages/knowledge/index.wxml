@@ -1,0 +1,31 @@
+<view class="page knowledge-page">
+  <view class="card section">
+    <view class="title">员工服务问答</view>
+    <view class="subtitle">可询问工资单、合同、请假、办公福利、制度流程等问题。</view>
+  </view>
+
+  <scroll-view class="chat-list" scroll-y scroll-into-view="{{lastMessageId}}">
+    <view wx:for="{{messages}}" wx:key="id" id="{{item.id}}" class="message {{item.role}}">
+      <view class="bubble">
+        <view>{{item.content}}</view>
+        <view wx:if="{{item.references.length}}" class="references">
+          <view class="reference-title">引用来源</view>
+          <view wx:for="{{item.references}}" wx:for-item="ref" wx:key="index" class="reference-item">
+            {{ref.title || ref.sourcePath || '知识来源'}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="quick-questions">
+    <button class="button-plain quick" data-question="我在哪里下载工资单？" bindtap="useQuestion">工资单</button>
+    <button class="button-plain quick" data-question="请假申请如何提交？" bindtap="useQuestion">请假</button>
+    <button class="button-plain quick" data-question="劳动合同在哪里查看？" bindtap="useQuestion">合同</button>
+  </view>
+
+  <view class="composer">
+    <input class="input composer-input" value="{{message}}" bindinput="onMessageInput" confirm-type="send" bindconfirm="sendMessage" placeholder="请输入问题" />
+    <button class="button-primary send-button" loading="{{sending}}" bindtap="sendMessage">发送</button>
+  </view>
+</view>

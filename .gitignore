@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+.DS_Store
+.env
+apps/api/uploads
+apps/web/dist
+npm-debug.log*
+*.log
+.history/
+.edge-diagnose/
+.edge-smoke-login/
+uploads/

@@ -1,0 +1,16 @@
+{
+  "appId": "com.hragentsystem.mobile",
+  "appName": "智能人事",
+  "webDir": "../web/dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#0f766e",
+      "showSpinner": false
+    }
+  }
+}

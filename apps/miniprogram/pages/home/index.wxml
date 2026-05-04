@@ -1,0 +1,65 @@
+<view class="page">
+  <view class="card section">
+    <view class="row">
+      <view>
+        <view class="title">{{displayName}}</view>
+        <view class="subtitle">{{roleLabel}} · {{apiBase}}</view>
+      </view>
+      <view class="tag">{{statusText}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{isCandidate}}" class="card section">
+    <view class="title">我的投递</view>
+    <view wx:if="{{candidateProfile.candidate}}">
+      <view class="info-line">当前阶段：{{candidateProfile.candidate.stageText}}</view>
+      <view class="info-line">应聘岗位：{{candidateProfile.candidate.jobTitle}}</view>
+      <view class="info-line">匹配分：{{candidateProfile.candidate.aiMatchScore || 0}}</view>
+    </view>
+    <view wx:else class="empty">暂无候选人档案，可在职位页直接投递。</view>
+  </view>
+
+  <view wx:else class="section">
+    <view class="grid">
+      <view class="metric">
+        <view class="metric-value">{{stats.pendingLeaveRequests || 0}}</view>
+        <view class="metric-label">待处理请假</view>
+      </view>
+      <view class="metric">
+        <view class="metric-value">{{stats.pendingOvertimeRequests || 0}}</view>
+        <view class="metric-label">待处理加班</view>
+      </view>
+      <view class="metric">
+        <view class="metric-value">{{stats.visiblePayslips || 0}}</view>
+        <view class="metric-label">可见工资单</view>
+      </view>
+      <view class="metric">
+        <view class="metric-value">{{stats.annualLeaveRemaining || 0}}</view>
+        <view class="metric-label">剩余年假</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card section">
+    <view class="title">快捷入口</view>
+    <view class="quick-grid">
+      <button class="button-plain" bindtap="goSelfService">员工自助</button>
+      <button class="button-plain" bindtap="goKnowledge">知识问答</button>
+      <button class="button-plain" bindtap="goCareer">职位投递</button>
+      <button class="button-plain" bindtap="goProfile">账号设置</button>
+    </view>
+  </view>
+
+  <view wx:if="{{reminders.length}}" class="card">
+    <view class="title">待办提醒</view>
+    <view wx:for="{{reminders}}" wx:key="id" class="reminder">
+      <view class="row">
+        <view class="reminder-title">{{item.title}}</view>
+        <view class="tag">{{item.priorityText}}</view>
+      </view>
+      <view class="subtitle">{{item.description}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+</view>

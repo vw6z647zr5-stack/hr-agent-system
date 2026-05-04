@@ -1,0 +1,27 @@
+.job-card {
+  margin-bottom: 22rpx;
+}
+
+.job-title {
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.job-desc {
+  margin: 18rpx 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.form-item {
+  margin-bottom: 22rpx;
+}
+
+.submit-button {
+  margin-top: 18rpx;
+}
+
+.info-line {
+  margin-top: 18rpx;
+  color: #334155;
+}

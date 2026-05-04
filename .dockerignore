@@ -1,0 +1,12 @@
+node_modules
+apps/api/dist
+apps/web/dist
+uploads
+*.log
+api.*.log
+web.*.log
+docs/.history
+.git
+.env
+*.err.log
+*.out.log

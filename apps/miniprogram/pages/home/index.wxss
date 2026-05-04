@@ -1,0 +1,21 @@
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.info-line {
+  margin-top: 18rpx;
+  color: #334155;
+}
+
+.reminder {
+  border-top: 1rpx solid #e2e8f0;
+  padding-top: 22rpx;
+  margin-top: 22rpx;
+}
+
+.reminder-title {
+  font-weight: 600;
+}

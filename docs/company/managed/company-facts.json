@@ -1,0 +1,246 @@
+{
+  "version": "1.0.30",
+  "updatedAt": "2026-04-28T13:00:00.271Z",
+  "items": [
+    {
+      "id": "6a884094-366c-462d-b0c7-413a737f6733",
+      "category": "company_overview",
+      "label": "公司名称",
+      "value": "星澜科技",
+      "description": "企业服务软件与人力资源智能工作流公司。",
+      "source": "公司基础资料",
+      "tags": [
+        "公司信息",
+        "概况"
+      ],
+      "status": "published",
+      "sortOrder": 10,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "c6241c34-96bc-4f74-b2f0-c315f2eaed69",
+      "category": "company_overview",
+      "label": "成立时间",
+      "value": "2021 年",
+      "description": "总部位于上海徐汇。",
+      "source": "公司基础资料",
+      "tags": [
+        "成立时间"
+      ],
+      "status": "published",
+      "sortOrder": 20,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "4e1f433a-3644-4fcc-b41e-837c1311c5f9",
+      "category": "company_overview",
+      "label": "行业定位",
+      "value": "企业服务软件 / 人力资源软件服务 / 智能工作流",
+      "description": "面向成长型科技公司、连锁零售企业和区域服务集团。",
+      "source": "公司基础资料",
+      "tags": [
+        "行业",
+        "产品"
+      ],
+      "status": "published",
+      "sortOrder": 30,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "545dd380-c598-49a3-9c25-a39e11a57b49",
+      "category": "office",
+      "label": "总部地址",
+      "value": "上海市徐汇区龙耀路 88 号星澜科技中心 A 栋",
+      "description": "8 层客户成功与销售，9 层产品和工程，10 层人力与职能支持。",
+      "source": "办公与福利指南",
+      "tags": [
+        "办公地址",
+        "楼层"
+      ],
+      "status": "published",
+      "sortOrder": 40,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "9e82228d-f51d-46a5-b710-3617146787e4",
+      "category": "schedule",
+      "label": "标准工作时间",
+      "value": "周一至周五 09:00-18:00，午休 12:00-13:00",
+      "description": "核心协作时间为 10:00-17:00。",
+      "source": "员工手册",
+      "tags": [
+        "工作时间",
+        "午休"
+      ],
+      "status": "published",
+      "sortOrder": 50,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "2566385f-f609-45e9-a6f6-758d67716c14",
+      "category": "schedule",
+      "label": "混合办公规则",
+      "value": "每周至少 3 天现场办公，远程办公需在前一工作日 18:00 前报备",
+      "description": "客户交付、面试、保密资料处理等场景优先现场完成。",
+      "source": "办公与福利指南",
+      "tags": [
+        "混合办公",
+        "远程办公"
+      ],
+      "status": "published",
+      "sortOrder": 60,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "00e55266-df2b-42ed-b9db-b1d92c33faf7",
+      "category": "benefits",
+      "label": "学习发展预算",
+      "value": "每人每年 3000 元",
+      "description": "岗位相关课程、认证考试和行业会议可申请报销。",
+      "source": "公司基础资料",
+      "tags": [
+        "福利",
+        "学习发展"
+      ],
+      "status": "published",
+      "sortOrder": 70,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "012354f2-38b6-45b7-b0eb-9b7926954c9a",
+      "category": "benefits",
+      "label": "基础福利",
+      "value": "五险一金、年度体检、补充商业保险、节日福利",
+      "description": "转正后员工次年起纳入统一体检计划。",
+      "source": "办公与福利指南",
+      "tags": [
+        "福利",
+        "保险"
+      ],
+      "status": "published",
+      "sortOrder": 80,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "a697e79a-5173-46ce-ae77-9bec795fea60",
+      "category": "organization",
+      "label": "核心部门",
+      "value": "人力资源部、工程平台部、产品设计部、客户成功部、财务与行政部、信息技术支持部",
+      "description": "覆盖组织人事、研发、产品、交付、财务和信息技术支持。",
+      "source": "组织与服务目录",
+      "tags": [
+        "部门",
+        "组织架构"
+      ],
+      "status": "published",
+      "sortOrder": 90,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "0c6f28fe-3124-4176-818c-00c90da4523f",
+      "category": "support",
+      "label": "资料变更入口",
+      "value": "员工自助端提交，人力资源团队审批后生效",
+      "description": "适用于手机号、地址、紧急联系人等信息更新。",
+      "source": "组织与服务目录",
+      "tags": [
+        "资料变更",
+        "员工自助"
+      ],
+      "status": "published",
+      "sortOrder": 100,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "aadd44f0-f3de-4073-8780-d29c46a391db",
+      "category": "support",
+      "label": "设备与账号支持入口",
+      "value": "联系信息技术支持部或提交信息技术支持工单",
+      "description": "适用于账号权限、设备管理、网络与安全问题。",
+      "source": "组织与服务目录",
+      "tags": [
+        "信息技术支持",
+        "设备",
+        "账号"
+      ],
+      "status": "published",
+      "sortOrder": 110,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "d59d7105-4105-4dcc-afb5-be26fab0c54f",
+      "category": "operations",
+      "label": "工资单发布时间",
+      "value": "每月 10 日前",
+      "description": "每月 5 日前锁数，8 日前完成薪酬复核。",
+      "source": "运营节奏与关键节点",
+      "tags": [
+        "工资单",
+        "发薪"
+      ],
+      "status": "published",
+      "sortOrder": 120,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "be0a1266-277d-4960-a4cd-7c5adf3c6a0b",
+      "category": "operations",
+      "label": "转正发起时间",
+      "value": "试用期结束前 10 个工作日",
+      "description": "直属经理发起，人力资源团队复核材料与考勤。",
+      "source": "试用期与转正制度",
+      "tags": [
+        "转正",
+        "试用期"
+      ],
+      "status": "published",
+      "sortOrder": 130,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "acf3d6b0-eaed-4076-99e3-bf840847a4c2",
+      "category": "security",
+      "label": "敏感权限开通要求",
+      "value": "涉及薪酬、绩效、合同和候选人简历的权限需审批",
+      "description": "默认按最小权限开通，管理员、人力资源和财务岗位必须启用双因素认证。",
+      "source": "信息安全与权限管理制度",
+      "tags": [
+        "权限",
+        "信息安全"
+      ],
+      "status": "published",
+      "sortOrder": 140,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    },
+    {
+      "id": "a83e5940-e756-4cd2-a1ef-82d363d43fa1",
+      "category": "security",
+      "label": "安全事件响应时限",
+      "value": "30 分钟内联系信息技术支持部",
+      "description": "适用于账号异常登录、权限误配、设备遗失或疑似数据泄露。",
+      "source": "信息安全与权限管理制度",
+      "tags": [
+        "安全事件",
+        "响应"
+      ],
+      "status": "published",
+      "sortOrder": 150,
+      "createdAt": "2026-04-25T03:44:46.412Z",
+      "updatedAt": "2026-04-25T03:44:46.412Z"
+    }
+  ]
+}

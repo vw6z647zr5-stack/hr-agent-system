@@ -1,0 +1,19 @@
+{
+  "name": "@hr-agent-system/mobile",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "check": "node ../../scripts/check-mobile.js",
+    "sync": "capacitor sync",
+    "open:android": "capacitor open android",
+    "open:ios": "capacitor open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "@capacitor/ios": "^6.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0"
+  }
+}

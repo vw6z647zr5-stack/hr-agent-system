@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/home/index",
+    "pages/self-service/index",
+    "pages/knowledge/index",
+    "pages/career/index",
+    "pages/profile/index",
+    "pages/login/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "智能人事",
+    "navigationBarBackgroundColor": "#0f766e",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f7faf9",
+    "backgroundTextStyle": "dark"
+  },
+  "networkTimeout": {
+    "request": 20000,
+    "uploadFile": 60000,
+    "downloadFile": 60000
+  },
+  "tabBar": {
+    "color": "#64748b",
+    "selectedColor": "#0f766e",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/self-service/index",
+        "text": "自助"
+      },
+      {
+        "pagePath": "pages/knowledge/index",
+        "text": "问答"
+      },
+      {
+        "pagePath": "pages/career/index",
+        "text": "职位"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

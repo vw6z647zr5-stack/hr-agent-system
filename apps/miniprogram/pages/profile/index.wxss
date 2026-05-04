@@ -1,0 +1,12 @@
+.small-title {
+  font-size: 30rpx;
+}
+
+.form-item {
+  margin: 22rpx 0;
+}
+
+.info-line {
+  margin-top: 18rpx;
+  color: #334155;
+}
