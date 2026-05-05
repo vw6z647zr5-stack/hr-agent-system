@@ -26,7 +26,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getOverviewDashboard, type OverviewDashboardPayload } from '../api/overview';
-import { AgentChatPanel } from '../components/AgentChatPanel';
+import { FloatingAssistant } from '../components/FloatingAssistant';
 import { DonutChart } from '../components/DonutChart';
 import { FunnelChart } from '../components/FunnelChart';
 import { JobHealthMiniChart } from '../components/JobHealthMiniChart';
@@ -726,46 +726,44 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <Card className="rounded-3xl shadow-panel">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-teal-50 to-teal-100 text-brand">
-              <BulbOutlined className="text-lg" />
-            </div>
-            <Typography.Title level={4} className="!mb-0">知识库与快捷入口</Typography.Title>
+      <Card className="rounded-3xl shadow-panel">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-teal-50 to-teal-100 text-brand">
+            <BulbOutlined className="text-lg" />
           </div>
-          <List
-            className="mt-4"
-            dataSource={dashboard.knowledgeHighlights}
-            locale={{ emptyText: '暂无知识库内容。' }}
-            renderItem={(item) => (
-              <List.Item>
-                <div className="w-full">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium text-ink">{item.title}</div>
-                    <Tag>{formatDisplayValue(item.category)}</Tag>
-                  </div>
-                  <div className="mt-2 text-sm text-slate-500">{item.summary}</div>
+          <Typography.Title level={4} className="!mb-0">知识库与快捷入口</Typography.Title>
+        </div>
+        <List
+          className="mt-4"
+          dataSource={dashboard.knowledgeHighlights}
+          locale={{ emptyText: '暂无知识库内容。' }}
+          renderItem={(item) => (
+            <List.Item>
+              <div className="w-full">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-medium text-ink">{item.title}</div>
+                  <Tag>{formatDisplayValue(item.category)}</Tag>
                 </div>
-              </List.Item>
-            )}
-          />
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {dashboard.quickLinks.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className="rounded-3xl border border-slate-200 p-4 transition hover:border-brand hover:bg-slate-50"
-              >
-                <div className="font-medium text-ink">{item.label}</div>
-                <div className="mt-2 text-sm text-slate-500">{item.description}</div>
-              </Link>
-            ))}
-          </div>
-        </Card>
+                <div className="mt-2 text-sm text-slate-500">{item.summary}</div>
+              </div>
+            </List.Item>
+          )}
+        />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          {dashboard.quickLinks.map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              className="rounded-3xl border border-slate-200 p-4 transition hover:border-brand hover:bg-slate-50"
+            >
+              <div className="font-medium text-ink">{item.label}</div>
+              <div className="mt-2 text-sm text-slate-500">{item.description}</div>
+            </Link>
+          ))}
+        </div>
+      </Card>
 
-        <AgentChatPanel />
-      </div>
+      <FloatingAssistant />
     </div>
   );
 }

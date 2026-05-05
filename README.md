@@ -171,7 +171,7 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 ## 测试账号
 
-所有种子账号的默认密码：`Password@123`
+所有种子账号的默认密码：`admin123`
 
 | 角色 | 用户名 | 邮箱 |
 | --- | --- | --- |
