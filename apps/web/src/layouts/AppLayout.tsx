@@ -12,10 +12,20 @@ import {
   TeamOutlined,
   UserOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Divider, Drawer, Dropdown, Input, Layout, Menu, Modal, Typography } from 'antd';
+import { Badge, Button, Divider, Drawer, Dropdown, Empty, Input, Layout, List, Menu, Modal, Space, Tag, Typography } from 'antd';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { logoutSession } from '../api/auth';
+import {
+  completeWorkflowTask,
+  getUnreadNotificationCount,
+  listNotifications,
+  listWorkflowTasks,
+  markAllNotificationsRead,
+  markNotificationRead,
+  type WorkflowNotification,
+  type WorkflowTask,
+} from '../api/workflow';
 import { BrandMark } from '../components/BrandMark';
 import { UserPhotoUpload } from '../components/UserPhotoUpload';
 import { resourceGroups } from '../config/resources';
@@ -33,6 +43,11 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [workflowOpen, setWorkflowOpen] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
+  const [workflowTasks, setWorkflowTasks] = useState<WorkflowTask[]>([]);
+  const [workflowLoading, setWorkflowLoading] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = () => {
@@ -58,6 +73,46 @@ export function AppLayout() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, []);
+
+  const refreshWorkflow = async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setWorkflowLoading(true);
+      const [countPayload, notificationPayload, taskPayload] = await Promise.all([
+        getUnreadNotificationCount(),
+        listNotifications(20),
+        listWorkflowTasks('pending', 20),
+      ]);
+      setNotificationCount(countPayload.count);
+      setNotifications(notificationPayload);
+      setWorkflowTasks(taskPayload);
+    } catch {
+      setNotificationCount(0);
+    } finally {
+      setWorkflowLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void refreshWorkflow();
+  }, [user?.userId]);
+
+  useEffect(() => {
+    if (!user) {
+      return undefined;
+    }
+
+    const timer = window.setInterval(() => {
+      void getUnreadNotificationCount()
+        .then((payload) => setNotificationCount(payload.count))
+        .catch(() => undefined);
+    }, 60_000);
+
+    return () => window.clearInterval(timer);
+  }, [user?.userId]);
 
   const menuItems = useMemo(() => {
     const features = user?.features ?? {};
@@ -235,18 +290,15 @@ export function AppLayout() {
               <span className="ml-auto rounded-md border border-slate-200 bg-white px-1.5 py-0 text-[10px] text-slate-400">Ctrl+K</span>
             </div>
 
-            <Badge count={0} size="small" className="notification-badge">
+            <Badge count={notificationCount} size="small" className="notification-badge">
               <Button
                 type="text"
                 icon={<BellOutlined className="text-lg text-slate-500" />}
                 className="!rounded-lg hover:!bg-amber-50 hover:!text-amber-500"
                 aria-label="通知"
                 onClick={() => {
-                  Modal.info({
-                    title: '暂无新通知',
-                    content: '待办提醒、审批消息和系统公告会在这里展示。',
-                    okText: '知道了',
-                  });
+                  setWorkflowOpen(true);
+                  void refreshWorkflow();
                 }}
               />
             </Badge>
@@ -339,6 +391,164 @@ export function AppLayout() {
           ))}
         </div>
       </Modal>
+
+      <Drawer
+        title="通知与流程待办"
+        open={workflowOpen}
+        width={520}
+        onClose={() => setWorkflowOpen(false)}
+        extra={
+          <Space>
+            <Button size="small" onClick={() => void refreshWorkflow()} loading={workflowLoading}>
+              刷新
+            </Button>
+            <Button
+              size="small"
+              onClick={() => {
+                void markAllNotificationsRead().then(() => refreshWorkflow());
+              }}
+            >
+              全部已读
+            </Button>
+          </Space>
+        }
+      >
+        <div className="space-y-6">
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <Typography.Title level={5} className="!mb-0">
+                待处理任务
+              </Typography.Title>
+              <Tag color="processing">{workflowTasks.length}</Tag>
+            </div>
+            <List
+              loading={workflowLoading}
+              dataSource={workflowTasks}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前没有待办任务" /> }}
+              renderItem={(item) => (
+                <List.Item
+                  actions={[
+                    <Button
+                      key="open"
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        if (item.linkPath) {
+                          navigate(item.linkPath);
+                          setWorkflowOpen(false);
+                        }
+                      }}
+                    >
+                      查看
+                    </Button>,
+                    <Button
+                      key="complete"
+                      size="small"
+                      onClick={() => void completeWorkflowTask(item.id).then(() => refreshWorkflow())}
+                    >
+                      完成
+                    </Button>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={
+                      <div className="flex items-center gap-2">
+                        <span>{item.title}</span>
+                        <Tag color={getPriorityColor(item.priority)}>{getPriorityLabel(item.priority)}</Tag>
+                      </div>
+                    }
+                    description={
+                      <div>
+                        <div>{item.description || '无补充说明'}</div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          {item.dueAt ? `截止：${formatWorkflowTime(item.dueAt)}` : `创建：${formatWorkflowTime(item.createdAt)}`}
+                        </div>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </section>
+
+          <Divider className="!my-3" />
+
+          <section>
+            <div className="mb-3 flex items-center justify-between">
+              <Typography.Title level={5} className="!mb-0">
+                最近通知
+              </Typography.Title>
+              <Tag color="gold">{notificationCount} 条未读</Tag>
+            </div>
+            <List
+              loading={workflowLoading}
+              dataSource={notifications}
+              locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无通知" /> }}
+              renderItem={(item) => (
+                <List.Item
+                  className={item.isRead ? 'opacity-75' : ''}
+                  actions={[
+                    <Button
+                      key="open"
+                      size="small"
+                      type="link"
+                      onClick={() => {
+                        void markNotificationRead(item.id).then(() => refreshWorkflow());
+                        if (item.linkPath) {
+                          navigate(item.linkPath);
+                          setWorkflowOpen(false);
+                        }
+                      }}
+                    >
+                      查看
+                    </Button>,
+                  ]}
+                >
+                  <List.Item.Meta
+                    title={
+                      <div className="flex items-center gap-2">
+                        <span>{item.title}</span>
+                        {!item.isRead ? <Tag color="red">未读</Tag> : null}
+                      </div>
+                    }
+                    description={
+                      <div>
+                        <div>{item.message}</div>
+                        <div className="mt-1 text-xs text-slate-400">{formatWorkflowTime(item.createdAt)}</div>
+                      </div>
+                    }
+                  />
+                </List.Item>
+              )}
+            />
+          </section>
+        </div>
+      </Drawer>
     </Layout>
   );
+}
+
+function getPriorityColor(priority: string) {
+  if (priority === 'high') return 'red';
+  if (priority === 'medium') return 'orange';
+  return 'blue';
+}
+
+function getPriorityLabel(priority: string) {
+  if (priority === 'high') return '高';
+  if (priority === 'medium') return '中';
+  return '低';
+}
+
+function formatWorkflowTime(value?: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
 }

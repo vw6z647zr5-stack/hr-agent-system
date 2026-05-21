@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AgentModule } from '../agents/agent.module';
 import { KnowledgeBaseArticleEntity } from '../agents/agent-support.entities';
+import { EmployeeContractEntity, EmployeeEntity } from '../organization/organization.entities';
+import { WorkflowModule } from '../workflows/workflow.module';
 import { CareerController } from './career.controller';
 import {
   CandidateEntity,
@@ -16,6 +18,7 @@ import { RecruitmentService } from './recruitment.service';
 @Module({
   imports: [
     AgentModule,
+    WorkflowModule,
     TypeOrmModule.forFeature([
       JobPostingEntity,
       CandidateEntity,
@@ -23,6 +26,8 @@ import { RecruitmentService } from './recruitment.service';
       InterviewEntity,
       OfferEntity,
       KnowledgeBaseArticleEntity,
+      EmployeeEntity,
+      EmployeeContractEntity,
     ]),
   ],
   controllers: [CareerController, RecruitmentController],

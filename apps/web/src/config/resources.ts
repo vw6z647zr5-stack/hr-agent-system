@@ -154,6 +154,7 @@ export const resourceGroups: MenuGroup[] = [
             { label: '劳务合同', value: 'service' },
           ], true),
           select('status', '合同状态', [
+            { label: '草稿', value: 'draft' },
             { label: '生效', value: 'active' },
             { label: '过期', value: 'expired' },
           ], true),

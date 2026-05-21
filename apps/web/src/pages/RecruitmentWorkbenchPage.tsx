@@ -33,6 +33,7 @@ import {
   type RecruitmentJobHealthItem,
   type ResumeListItem,
 } from '../api/recruitment';
+import { listWorkflowEvents, type WorkflowEvent } from '../api/workflow';
 import { listResource } from '../api/resources';
 import { StatCard } from '../components/StatCard';
 import { formatDisplayValue } from '../utils/display';
@@ -66,6 +67,8 @@ export function RecruitmentWorkbenchPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeCandidate, setActiveCandidate] = useState<PriorityCandidateItem | null>(null);
+  const [candidateEvents, setCandidateEvents] = useState<WorkflowEvent[]>([]);
+  const [candidateEventsLoading, setCandidateEventsLoading] = useState(false);
   const [matchScoreResult, setMatchScoreResult] = useState<Record<string, unknown> | null>(null);
   const [emailDraft, setEmailDraft] = useState<Record<string, unknown> | null>(null);
   const [activeResume, setActiveResume] = useState<ResumeListItem | null>(null);
@@ -126,14 +129,28 @@ export function RecruitmentWorkbenchPage() {
     setActiveCandidate(candidate);
     setMatchScoreResult(null);
     setEmailDraft(null);
+    setCandidateEvents([]);
     interviewForm.resetFields();
+    void loadCandidateEvents(candidate.id);
   };
 
   const closeCandidateDrawer = () => {
     setActiveCandidate(null);
     setMatchScoreResult(null);
     setEmailDraft(null);
+    setCandidateEvents([]);
     interviewForm.resetFields();
+  };
+
+  const loadCandidateEvents = async (candidateId: string) => {
+    try {
+      setCandidateEventsLoading(true);
+      setCandidateEvents(await listWorkflowEvents({ entityType: 'candidate', entityId: candidateId, limit: 20 }));
+    } catch {
+      setCandidateEvents([]);
+    } finally {
+      setCandidateEventsLoading(false);
+    }
   };
 
   const handleRunMatchScore = async () => {
@@ -540,6 +557,32 @@ export function RecruitmentWorkbenchPage() {
                   </Tag>
                 ))}
               </div>
+            </Card>
+
+            <Card size="small" title="候选人时间线">
+              <List
+                loading={candidateEventsLoading}
+                dataSource={candidateEvents}
+                locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无流程记录" /> }}
+                renderItem={(item) => (
+                  <List.Item>
+                    <List.Item.Meta
+                      title={
+                        <div className="flex items-center gap-2">
+                          <span>{item.title}</span>
+                          <Tag>{formatDisplayValue(item.category)}</Tag>
+                        </div>
+                      }
+                      description={
+                        <div>
+                          <div>{item.description}</div>
+                          <div className="mt-1 text-xs text-slate-400">{formatDateTime(item.createdAt)}</div>
+                        </div>
+                      }
+                    />
+                  </List.Item>
+                )}
+              />
             </Card>
 
             <Card

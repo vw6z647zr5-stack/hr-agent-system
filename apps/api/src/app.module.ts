@@ -26,6 +26,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
 import { FeatureGuard } from './tenant/feature-guard';
 import { ENV_FILE_PATHS } from './config/env';
 import { getDatabaseUrl } from './config/security';
+import { WorkflowModule } from './workflows/workflow.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { getDatabaseUrl } from './config/security';
     AuditModule,
     TenantModule,
     CompanyModule,
+    WorkflowModule,
     RedisModule,
     StorageModule,
     UsersModule,

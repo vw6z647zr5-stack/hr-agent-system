@@ -8,8 +8,11 @@ import { AgentService } from '../agents/agent.service';
 import { ListQueryDto } from '../common/dto/list-query.dto';
 import { paginateQuery } from '../common/utils/pagination';
 import { normalizeExtractedText, repairTextEncoding } from '../common/utils/text-encoding';
+import { EmployeeContractEntity, EmployeeEntity } from '../organization/organization.entities';
 import { StorageService } from '../storage/storage.service';
 import { TenantContext } from '../tenant/tenant.context';
+import { AuthenticatedUser, Role } from '../users/user.entity';
+import { WorkflowService } from '../workflows/workflow.service';
 import {
   CandidatePortalApplicationDto,
   CreateCandidateDto,
@@ -30,7 +33,6 @@ import {
   OfferEntity,
   ResumeEntity,
 } from './recruitment.entities';
-import { AuthenticatedUser, Role } from '../users/user.entity';
 
 type HiringAlertLevel = 'high' | 'medium' | 'low';
 
@@ -49,9 +51,14 @@ export class RecruitmentService {
     private readonly offersRepository: Repository<OfferEntity>,
     @InjectRepository(KnowledgeBaseArticleEntity)
     private readonly knowledgeBaseRepository: Repository<KnowledgeBaseArticleEntity>,
+    @InjectRepository(EmployeeEntity)
+    private readonly employeesRepository: Repository<EmployeeEntity>,
+    @InjectRepository(EmployeeContractEntity)
+    private readonly employeeContractsRepository: Repository<EmployeeContractEntity>,
     private readonly storageService: StorageService,
     private readonly agentService: AgentService,
     private readonly tenantContext: TenantContext,
+    private readonly workflowService: WorkflowService,
   ) {}
 
   async getRecruitmentDashboard() {
@@ -733,10 +740,24 @@ export class RecruitmentService {
     if (saved.appliedJobPostingId) {
       await this.agentService.recalculateAndPersistScore(saved.id).catch(() => {});
     }
+    await this.recordRecruitmentEvent({
+      candidateId: saved.id,
+      category: 'candidate',
+      title: '候选人进入人才池',
+      description: `${saved.fullName} 已创建候选人档案。`,
+      metadata: { stage: saved.stage, source: saved.source, jobPostingId: saved.appliedJobPostingId },
+    });
+    await this.notifyRecruitmentTeam({
+      title: '新增候选人',
+      message: `${saved.fullName} 已进入招聘流程。`,
+      linkPath: '/recruitment-workbench',
+      metadata: { candidateId: saved.id },
+    });
     return saved;
   }
 
   async updateCandidate(id: string, dto: UpdateCandidateDto) {
+    const current = await this.getCandidate(id);
     const entity = await this.candidatesRepository.preload({ id, ...dto });
     if (!entity) {
       throw new NotFoundException('未找到候选人。');
@@ -750,6 +771,15 @@ export class RecruitmentService {
       || dto.appliedJobPostingId !== undefined;
     if (needsRecalc && saved.appliedJobPostingId) {
       await this.agentService.recalculateAndPersistScore(saved.id).catch(() => {});
+    }
+    if (dto.stage !== undefined && dto.stage !== current.stage) {
+      await this.recordRecruitmentEvent({
+        candidateId: saved.id,
+        category: 'candidate',
+        title: '招聘阶段已更新',
+        description: `${saved.fullName} 从 ${this.getStageLabel(current.stage)} 进入 ${this.getStageLabel(saved.stage)}。`,
+        metadata: { previousStage: current.stage, nextStage: saved.stage },
+      });
     }
     return saved;
   }
@@ -865,6 +895,13 @@ export class RecruitmentService {
         skills: parsedSkills,
       });
     }
+    await this.recordRecruitmentEvent({
+      candidateId: resume.candidateId,
+      category: 'resume',
+      title: '简历智能分析完成',
+      description: `${resume.candidate?.fullName ?? '候选人'} 的简历「${resume.fileName}」已完成结构化分析。`,
+      metadata: { resumeId: resume.id, parsedProfile: analysis.parsedProfile },
+    });
 
     return {
       resumeId: resume.id,
@@ -961,6 +998,19 @@ export class RecruitmentService {
     if (candidate.appliedJobPostingId) {
       await this.agentService.recalculateAndPersistScore(candidateId).catch(() => {});
     }
+    await this.recordRecruitmentEvent({
+      candidateId,
+      category: 'resume',
+      title: '候选人上传简历',
+      description: `${candidate.fullName} 上传了简历「${resume.fileName}」。`,
+      metadata: { resumeId: resume.id, fileName: resume.fileName },
+    });
+    await this.notifyRecruitmentTeam({
+      title: '候选人简历已更新',
+      message: `${candidate.fullName} 上传了新的简历，可进入招聘工作台查看。`,
+      linkPath: '/recruitment-workbench',
+      metadata: { candidateId, resumeId: resume.id },
+    });
 
     return resume;
   }
@@ -1011,17 +1061,50 @@ export class RecruitmentService {
     return entity;
   }
 
-  createInterview(dto: CreateInterviewDto) {
-    return this.interviewsRepository.save(this.interviewsRepository.create(dto));
+  async createInterview(dto: CreateInterviewDto) {
+    const saved = await this.interviewsRepository.save(this.interviewsRepository.create(dto));
+    await this.recordRecruitmentEvent({
+      candidateId: saved.candidateId,
+      category: 'interview',
+      title: '面试已安排',
+      description: `已安排 ${new Date(saved.scheduledAt).toLocaleString('zh-CN')} 的${this.getInterviewTypeLabel(saved.interviewType)}面试。`,
+      metadata: { interviewId: saved.id, jobPostingId: saved.jobPostingId, interviewerEmployeeId: saved.interviewerEmployeeId },
+    });
+    if (saved.interviewerEmployeeId) {
+      await this.workflowService.createTask({
+        ownerEmployeeId: saved.interviewerEmployeeId,
+        category: 'interview',
+        priority: 'medium',
+        title: '准备候选人面试',
+        description: '请提前查看候选人简历和岗位要求，完成面试准备。',
+        linkPath: '/recruitment-workbench',
+        relatedEntityType: 'candidate',
+        relatedEntityId: saved.candidateId,
+        dueAt: saved.scheduledAt,
+        metadata: { interviewId: saved.id },
+      });
+    }
+    return saved;
   }
 
   async updateInterview(id: string, dto: UpdateInterviewDto) {
+    const current = await this.getInterview(id);
     const entity = await this.interviewsRepository.preload({ id, ...dto });
     if (!entity) {
       throw new NotFoundException('未找到面试记录。');
     }
 
-    return this.interviewsRepository.save(entity);
+    const saved = await this.interviewsRepository.save(entity);
+    if (dto.status !== undefined && dto.status !== current.status) {
+      await this.recordRecruitmentEvent({
+        candidateId: saved.candidateId,
+        category: 'interview',
+        title: '面试状态已更新',
+        description: `面试状态从 ${current.status} 更新为 ${saved.status}。`,
+        metadata: { interviewId: saved.id, previousStatus: current.status, nextStatus: saved.status, score: saved.score },
+      });
+    }
+    return saved;
   }
 
   async removeInterview(id: string) {
@@ -1075,23 +1158,272 @@ export class RecruitmentService {
     return entity;
   }
 
-  createOffer(dto: CreateOfferDto) {
-    return this.offersRepository.save(this.offersRepository.create(dto));
+  async createOffer(dto: CreateOfferDto) {
+    const saved = await this.offersRepository.save(this.offersRepository.create(dto));
+    await this.recordRecruitmentEvent({
+      candidateId: saved.candidateId,
+      category: 'offer',
+      title: '录用草稿已创建',
+      description: '已创建候选人录用草稿，等待薪资方案和审批确认。',
+      metadata: { offerId: saved.id, jobPostingId: saved.jobPostingId, status: saved.status },
+    });
+    await this.workflowService.createTask({
+      ownerEmployeeId: saved.approvalByEmployeeId,
+      category: 'offer',
+      priority: 'high',
+      title: '复核录用方案',
+      description: '请确认录用薪资、岗位、入职安排和审批意见。',
+      linkPath: '/resources/offers',
+      relatedEntityType: 'candidate',
+      relatedEntityId: saved.candidateId,
+      metadata: { offerId: saved.id },
+    });
+    return saved;
   }
 
   async updateOffer(id: string, dto: UpdateOfferDto) {
+    const current = await this.getOffer(id);
     const entity = await this.offersRepository.preload({ id, ...dto });
     if (!entity) {
       throw new NotFoundException('未找到录用记录。');
     }
 
-    return this.offersRepository.save(entity);
+    const saved = await this.offersRepository.save(entity);
+    if (dto.status !== undefined && dto.status !== current.status) {
+      await this.recordRecruitmentEvent({
+        candidateId: saved.candidateId,
+        category: 'offer',
+        title: '录用状态已更新',
+        description: `录用状态从 ${current.status} 更新为 ${saved.status}。`,
+        metadata: { offerId: saved.id, previousStatus: current.status, nextStatus: saved.status },
+      });
+    }
+    if (current.status !== 'accepted' && saved.status === 'accepted') {
+      await this.createOnboardingFromAcceptedOffer(saved.id);
+    }
+    return saved;
   }
 
   async removeOffer(id: string) {
     await this.getOffer(id);
     await this.offersRepository.delete(id);
     return { success: true };
+  }
+
+  private async createOnboardingFromAcceptedOffer(offerId: string) {
+    const offer = await this.offersRepository.findOne({
+      where: { id: offerId },
+      relations: {
+        candidate: true,
+        jobPosting: true,
+        approver: true,
+      },
+    });
+
+    if (!offer) {
+      return;
+    }
+
+    const companyId = this.tenantContext.getCompanyId();
+    const candidate = offer.candidate;
+    let employee = await this.employeesRepository.findOne({ where: { companyId, email: candidate.email } });
+    const today = new Date();
+    const joinDate = today.toISOString().slice(0, 10);
+
+    if (!employee) {
+      employee = await this.employeesRepository.save(
+        this.employeesRepository.create({
+          companyId,
+          userId: null,
+          employeeNo: await this.generateEmployeeNo(candidate),
+          fullName: candidate.fullName,
+          email: candidate.email,
+          phone: candidate.phone,
+          gender: 'unknown',
+          birthDate: null,
+          departmentId: offer.jobPosting?.departmentId ?? null,
+          positionId: offer.jobPosting?.positionId ?? null,
+          managerEmployeeId: null,
+          employmentType: offer.jobPosting?.employmentType ?? 'full_time',
+          employmentStatus: 'probation',
+          grade: 'P1',
+          joinDate,
+          probationEndDate: this.addDays(today, 90).toISOString().slice(0, 10),
+          regularizationDate: null,
+          exitDate: null,
+          education: '',
+          certificates: [],
+          address: '',
+          emergencyContact: {},
+          nationalIdMasked: '',
+          bankAccountMasked: '',
+          profileSummary: candidate.skills.length
+            ? `由候选人转入，已识别技能：${candidate.skills.slice(0, 8).join('、')}。`
+            : '由录用候选人转入，待完善员工档案。',
+          avatarUrl: '',
+        }),
+      );
+    }
+
+    const contractNo = this.generateContractNo(offer);
+    const existingContract = await this.employeeContractsRepository.findOne({ where: { contractNo } });
+    if (!existingContract) {
+      await this.employeeContractsRepository.save(
+        this.employeeContractsRepository.create({
+          employeeId: employee.id,
+          contractNo,
+          contractType: 'labor',
+          status: 'draft',
+          startDate: joinDate,
+          endDate: null,
+          probationMonths: 3,
+          salaryBase: offer.salaryOffered,
+          filePath: '',
+          notes: `由候选人 ${candidate.fullName} 的录用记录自动生成，待人力资源复核。`,
+        }),
+      );
+    }
+
+    await this.candidatesRepository.update(candidate.id, {
+      stage: 'hired',
+      status: 'hired',
+    });
+
+    const ownerEmployeeId = offer.approvalByEmployeeId ?? null;
+    const taskInputs = [
+      {
+        title: '复核新员工档案',
+        description: '确认部门、岗位、直属经理、手机号、紧急联系人和入职日期。',
+        linkPath: '/resources/employees',
+        dueAt: this.addDays(today, 1),
+      },
+      {
+        title: '准备并签署劳动合同',
+        description: '根据录用薪资和岗位信息完善合同附件，确认签署状态。',
+        linkPath: '/resources/employee-contracts',
+        dueAt: this.addDays(today, 2),
+      },
+      {
+        title: '开通系统账号与权限',
+        description: '为新员工创建账号，分配员工自助访问权限和必要系统入口。',
+        linkPath: '/resources/employees',
+        dueAt: this.addDays(today, 2),
+      },
+      {
+        title: '安排试用期目标',
+        description: '与直属经理确认试用期目标、导师和首次回顾时间。',
+        linkPath: '/resources/performance-goals',
+        dueAt: this.addDays(today, 7),
+      },
+    ];
+
+    await Promise.all(
+      taskInputs.map((task) =>
+        this.workflowService.createTask({
+          ownerEmployeeId,
+          category: 'onboarding',
+          priority: task.title.includes('合同') || task.title.includes('账号') ? 'high' : 'medium',
+          title: task.title,
+          description: task.description,
+          linkPath: task.linkPath,
+          relatedEntityType: 'candidate',
+          relatedEntityId: candidate.id,
+          dueAt: task.dueAt,
+          metadata: { offerId: offer.id, employeeId: employee.id },
+        }),
+      ),
+    );
+
+    await this.recordRecruitmentEvent({
+      candidateId: candidate.id,
+      category: 'onboarding',
+      title: '录用已转入职',
+      description: `${candidate.fullName} 已生成员工档案、合同草稿和入职待办。`,
+      metadata: { offerId: offer.id, employeeId: employee.id, contractNo },
+    });
+    await this.workflowService.createEvent({
+      category: 'onboarding',
+      title: '新员工入职流程已创建',
+      description: `${employee.fullName} 的入职待办已生成。`,
+      relatedEntityType: 'employee',
+      relatedEntityId: employee.id,
+      metadata: { candidateId: candidate.id, offerId: offer.id },
+    });
+    await this.notifyRecruitmentTeam({
+      title: '录用已转入职',
+      message: `${candidate.fullName} 已接受录用，系统已创建入职待办。`,
+      priority: 'high',
+      linkPath: '/dashboard',
+      metadata: { candidateId: candidate.id, offerId: offer.id, employeeId: employee.id },
+    });
+  }
+
+  private async recordRecruitmentEvent(input: {
+    candidateId: string;
+    category: string;
+    title: string;
+    description: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    await this.workflowService.createEvent({
+      category: input.category,
+      title: input.title,
+      description: input.description,
+      relatedEntityType: 'candidate',
+      relatedEntityId: input.candidateId,
+      metadata: input.metadata ?? {},
+    }).catch(() => undefined);
+  }
+
+  private async notifyRecruitmentTeam(input: {
+    title: string;
+    message: string;
+    priority?: 'low' | 'medium' | 'high';
+    linkPath: string;
+    metadata?: Record<string, unknown>;
+  }) {
+    await this.workflowService.createNotification({
+      category: 'recruitment',
+      priority: input.priority ?? 'medium',
+      title: input.title,
+      message: input.message,
+      linkPath: input.linkPath,
+      metadata: input.metadata ?? {},
+    }).catch(() => undefined);
+  }
+
+  private async generateEmployeeNo(candidate: CandidateEntity) {
+    const prefix = `CAND-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`;
+    const base = `${prefix}-${candidate.id.slice(0, 6).toUpperCase()}`;
+    const exists = await this.employeesRepository.findOne({
+      where: { companyId: this.tenantContext.getCompanyId(), employeeNo: base },
+    });
+
+    if (!exists) {
+      return base;
+    }
+
+    return `${prefix}-${candidate.id.slice(0, 4).toUpperCase()}-${Date.now().toString().slice(-4)}`;
+  }
+
+  private generateContractNo(offer: OfferEntity) {
+    return `ONB-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${offer.id.slice(0, 8).toUpperCase()}`;
+  }
+
+  private addDays(value: Date, days: number) {
+    const next = new Date(value);
+    next.setDate(next.getDate() + days);
+    return next;
+  }
+
+  private getInterviewTypeLabel(value: string) {
+    const labels: Record<string, string> = {
+      onsite: '现场',
+      video: '视频',
+      phone: '电话',
+    };
+
+    return labels[value] ?? value;
   }
 
   private async parseDocumentText(file: Express.Multer.File, absolutePath: string): Promise<string> {

@@ -25,6 +25,7 @@
     "check:mobile": "node scripts/check-mobile.js",
     "verify:robustness": "node scripts/verify-robustness.js",
     "verify:surface": "node scripts/verify-surface.js",
+    "verify:workflow": "node scripts/verify-workflow.js",
     "verify": "npm run check:copy && npm run check:miniprogram && npm run check:desktop && npm run check:mobile && npm run lint && npm run build",
     "verify:full": "npm run verify && node scripts/verify-full-flow.js && npm run verify:surface",
     "recalc-scores": "node scripts/recalculate-all-scores.js"

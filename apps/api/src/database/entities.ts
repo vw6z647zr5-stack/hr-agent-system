@@ -27,6 +27,11 @@ import {
   ResumeEntity,
 } from '../recruitment/recruitment.entities';
 import { UserEntity } from '../users/user.entity';
+import {
+  WorkflowEventEntity,
+  WorkflowNotificationEntity,
+  WorkflowTaskEntity,
+} from '../workflows/workflow.entities';
 
 export const DATABASE_ENTITIES = [
   CompanyEntity,
@@ -53,4 +58,7 @@ export const DATABASE_ENTITIES = [
   KnowledgeBaseArticleEntity,
   ProfileChangeRequestEntity,
   AuditLogEntity,
+  WorkflowNotificationEntity,
+  WorkflowTaskEntity,
+  WorkflowEventEntity,
 ] as const;
