@@ -9,9 +9,12 @@ import {
   MatchScoreAgentDto,
   ParseResumeAgentDto,
   PerformanceAnalyzeDto,
+  PulseSurveyRespondDto,
 } from './agent.dto';
 import { AgentService } from './agent.service';
 import { CompanyFactsService } from './company-facts.service';
+import { ProactiveAgentService } from './services/proactive-agent.service';
+import { PulseSurveyService } from './services/pulse-survey.service';
 
 @ApiTags('agent')
 @ApiBearerAuth()
@@ -20,6 +23,8 @@ export class AgentController {
   constructor(
     private readonly agentService: AgentService,
     private readonly companyFactsService: CompanyFactsService,
+    private readonly proactiveAgent: ProactiveAgentService,
+    private readonly pulseSurveyService: PulseSurveyService,
   ) {}
 
   /** 将已存简历或原始简历文本解析为结构化候选人数据。 */
@@ -84,6 +89,30 @@ export class AgentController {
     return this.companyFactsService.getPublishedFacts();
   }
 
+  /** 获取当前活跃的脉冲调查问卷。 */
+  @Roles(Role.ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE)
+  @Get('employee-service/pulse-survey')
+  getActivePulseSurvey() {
+    return this.pulseSurveyService.getActiveSurvey();
+  }
+
+  /** 提交脉冲调查问卷回复。 */
+  @Roles(Role.ADMIN, Role.HR, Role.MANAGER, Role.EMPLOYEE)
+  @Post('employee-service/pulse-survey/respond')
+  submitPulseSurveyResponse(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: PulseSurveyRespondDto,
+  ) {
+    return this.pulseSurveyService.submitResponse(payload.surveyId, user.employeeId!, payload.answers);
+  }
+
+  /** 获取脉冲调查聚合分析结果（人力资源限定）。 */
+  @Roles(Role.ADMIN, Role.HR)
+  @Get('pulse-survey/results')
+  getPulseSurveyResults(@Query('period') period?: string) {
+    return this.pulseSurveyService.getAggregatedResults(period ?? '30d');
+  }
+
   /** 分析绩效数据并生成改进建议。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Post('performance/analyze')
@@ -110,5 +139,13 @@ export class AgentController {
   @Get('attrition/high-risk-list')
   getHighRiskList() {
     return this.agentService.getHighRiskAttritionList();
+  }
+
+  /** 手动触发主动智能体检查并返回洞察结果。 */
+  @Roles(Role.ADMIN, Role.HR)
+  @Get('proactive/check')
+  async triggerProactiveCheck(@CurrentUser() user: AuthenticatedUser) {
+    const insights = await this.proactiveAgent.runManualCheck(user.companyId!);
+    return { insights };
   }
 }

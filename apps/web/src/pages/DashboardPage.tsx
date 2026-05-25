@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getOverviewDashboard, type OverviewDashboardPayload } from '../api/overview';
+import { getProactiveCheck, getPulseSurveyResults, type ProactiveInsightPayload, type PulseSurveyResultsPayload } from '../api/agent';
 import { FloatingAssistant } from '../components/FloatingAssistant';
 import { DonutChart } from '../components/DonutChart';
 import { FunnelChart } from '../components/FunnelChart';
@@ -44,6 +45,8 @@ export function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<OverviewDashboardPayload | null>(null);
+  const [proactiveInsights, setProactiveInsights] = useState<ProactiveInsightPayload[]>([]);
+  const [pulseResults, setPulseResults] = useState<PulseSurveyResultsPayload | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(() => {
     try { return localStorage.getItem(AUTO_REFRESH_KEY) === 'true'; } catch { return false; }
   });
@@ -75,6 +78,18 @@ export function DashboardPage() {
     const timer = setInterval(() => { void fetchDashboard(false); }, 30_000);
     return () => clearInterval(timer);
   }, [autoRefresh, fetchDashboard]);
+
+  // Fetch proactive insights for HR/admin
+  useEffect(() => {
+    if (!dashboard || dashboard.scope === 'employee') return;
+    getProactiveCheck().then((res) => setProactiveInsights(res.insights)).catch(() => {});
+  }, [dashboard]);
+
+  // Fetch pulse survey results for HR/admin
+  useEffect(() => {
+    if (!dashboard || dashboard.scope === 'employee') return;
+    getPulseSurveyResults('30d').then(setPulseResults).catch(() => {});
+  }, [dashboard]);
 
   if (loading) {
     return <SkeletonDashboard />;
@@ -762,6 +777,97 @@ export function DashboardPage() {
           ))}
         </div>
       </Card>
+
+      {/* AI 智能预警 */}
+      {proactiveInsights.length > 0 ? (
+        <SectionErrorBoundary name="AI 智能预警">
+          <Card className="rounded-3xl shadow-panel">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-amber-50 to-orange-100 text-orange-500">
+                <RadarChartOutlined className="text-lg" />
+              </div>
+              <Typography.Title level={4} className="!mb-0">AI 智能预警</Typography.Title>
+              <Tag color="orange">自动检测</Tag>
+            </div>
+            <div className="space-y-3">
+              {proactiveInsights.map((insight) => {
+                const priorityColors: Record<string, string> = { high: 'red', medium: 'orange', low: 'blue' };
+                const priorityLabels: Record<string, string> = { high: '紧急', medium: '关注', low: '提示' };
+                return (
+                  <div key={insight.type} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Tag color={priorityColors[insight.priority] ?? 'default'}>
+                            {priorityLabels[insight.priority] ?? insight.priority}
+                          </Tag>
+                          <span className="font-semibold text-ink text-[15px]">{insight.title}</span>
+                        </div>
+                        <div className="text-sm text-slate-500">{insight.message}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </SectionErrorBoundary>
+      ) : null}
+
+      {/* 员工心声 */}
+      {pulseResults ? (
+        <SectionErrorBoundary name="员工心声">
+          <Card className="rounded-3xl shadow-panel">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-purple-50 to-indigo-100 text-purple-500">
+                <AimOutlined className="text-lg" />
+              </div>
+              <Typography.Title level={4} className="!mb-0">员工心声</Typography.Title>
+              <Tag color="purple">近30天</Tag>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-4">
+              <StatCard label="总反馈数" value={pulseResults.totalResponses} icon={<BulbOutlined />} />
+              <StatCard label="正面反馈" value={pulseResults.sentimentDistribution.positive} color="#10b981" />
+              <StatCard label="中性反馈" value={pulseResults.sentimentDistribution.neutral} color="#3b82f6" />
+              <StatCard label="负面反馈" value={pulseResults.sentimentDistribution.negative} color="#ef4444" />
+            </div>
+            {pulseResults.departmentHeatmap.length > 0 ? (
+              <div className="mb-4">
+                <div className="text-sm font-medium text-slate-600 mb-2">部门情感分布</div>
+                <div className="space-y-2">
+                  {pulseResults.departmentHeatmap.slice(0, 5).map((dept) => (
+                    <div key={dept.departmentName} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white p-3 shadow-sm">
+                      <div className="flex items-center gap-2">
+                        <ApartmentOutlined className="text-slate-400" />
+                        <span className="text-sm font-medium text-ink">{dept.departmentName}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400">{dept.responseCount}条反馈</span>
+                        <Progress
+                          percent={Math.round(((dept.avgSentiment + 1) / 2) * 100)}
+                          size="small"
+                          style={{ width: 80 }}
+                          strokeColor={dept.avgSentiment >= 0.3 ? '#10b981' : dept.avgSentiment <= -0.3 ? '#ef4444' : '#f59e0b'}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {pulseResults.topKeywords.length > 0 ? (
+              <div>
+                <div className="text-sm font-medium text-slate-600 mb-2">热词云</div>
+                <div className="flex flex-wrap gap-2">
+                  {pulseResults.topKeywords.slice(0, 10).map((kw) => (
+                    <Tag key={kw.keyword} color="purple">{kw.keyword} ({kw.count})</Tag>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </Card>
+        </SectionErrorBoundary>
+      ) : null}
 
       <FloatingAssistant />
     </div>

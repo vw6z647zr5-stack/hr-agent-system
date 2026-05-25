@@ -15,7 +15,7 @@ import {
 import { Alert, Button, Card, Collapse, Input, List, Tag, Tooltip, Typography, message } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import { employeeServiceChat } from '../api/agent';
+import { employeeServiceChat, getActivePulseSurvey, type PulseSurvey } from '../api/agent';
 import { SOCKET_BASE_URL } from '../api/http';
 import { authStore } from '../state/auth.store';
 import { formatDisplayValue } from '../utils/display';
@@ -82,6 +82,7 @@ export function AgentChatPanel({ onClose }: { onClose?: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [connectError, setConnectError] = useState(false);
+  const [activeSurvey, setActiveSurvey] = useState<PulseSurvey | null>(null);
   const pendingSocketFallbackRef = useRef<number | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatListRef = useRef<HTMLDivElement>(null);
@@ -94,6 +95,12 @@ export function AgentChatPanel({ onClose }: { onClose?: () => void }) {
       pendingSocketFallbackRef.current = null;
     }
   };
+
+  // 获取活跃的员工心声调研问卷，用于展示提示卡片
+  useEffect(() => {
+    if (!token) return;
+    getActivePulseSurvey().then(setActiveSurvey).catch(() => {});
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -140,7 +147,7 @@ export function AgentChatPanel({ onClose }: { onClose?: () => void }) {
     }
   }, [messages]);
 
-  // Clear newest message animation marker after animation completes
+      // 动画结束后清除最新消息标记。
   useEffect(() => {
     if (newestMsgIdx === null) return;
     const timer = setTimeout(() => setNewestMsgIdx(null), 400);
@@ -313,6 +320,28 @@ export function AgentChatPanel({ onClose }: { onClose?: () => void }) {
             快速提问
           </Typography.Text>
         </div>
+        {/* Pulse survey prompt */}
+        {activeSurvey ? (
+          <div className="mb-2.5 rounded-xl border border-purple-200/60 bg-gradient-to-r from-purple-50 to-indigo-50 p-3">
+            <div className="flex items-center gap-2">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-purple-400 to-indigo-500">
+                <ThunderboltOutlined className="text-xs text-white" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-semibold text-purple-800">员工心声调研</div>
+                <div className="text-[11px] text-purple-600 truncate">{activeSurvey.title}</div>
+              </div>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg bg-purple-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-600 transition-colors"
+                onClick={() => send('我想参与员工心声调研')}
+              >
+                参与
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap gap-2">
           {QUICK_SUGGESTIONS.map((suggestion) => (
             <button

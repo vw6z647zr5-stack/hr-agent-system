@@ -1,4 +1,4 @@
-import { IsDateString, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsDateString, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class ParseResumeAgentDto {
   @IsOptional()
@@ -61,4 +61,47 @@ export class PerformanceAnalyzeDto {
   @IsOptional()
   @IsUUID()
   cycleId?: string;
+}
+
+export class PulseSurveyRespondDto {
+  @IsUUID()
+  surveyId!: string;
+
+  @IsObject()
+  answers!: Record<string, unknown>;
+}
+
+// --- Attrition Risk v2 types ---
+
+export interface AttritionFactorBreakdown {
+  factor: string;
+  label: string;
+  weight: number;
+  score: number;
+  weightedScore: number;
+  evidence: string[];
+}
+
+export interface AttritionRiskProfile {
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  riskScore: number;
+  riskLevel: 'low' | 'moderate' | 'high' | 'critical';
+  explanation: string;
+  factorBreakdown: AttritionFactorBreakdown[];
+  indicators: {
+    lateCount: number;
+    leaveCount: number;
+    overtimeCount: number;
+    currentScore: number;
+    previousScore: number;
+    profileChangeCount: number;
+    tenureMonths: number;
+    monthsSinceLastPromotion: number;
+    sickLeaveCount: number;
+    overtimeMonthlyAvg: number;
+  };
+  recommendation: string;
+  generatedAt: string;
 }

@@ -352,3 +352,79 @@ export function predictAttrition(employeeId?: string) {
 export function getHighRiskAttritionList() {
   return apiRequest<Array<Record<string, unknown>>>('/agent/attrition/high-risk-list');
 }
+
+// --- Proactive AI ---
+
+export interface ProactiveInsightPayload {
+  type: string;
+  title: string;
+  message: string;
+  priority: 'high' | 'medium' | 'low';
+  details: Record<string, unknown>;
+  generatedAt: string;
+}
+
+export function getProactiveCheck() {
+  return apiRequest<{ insights: ProactiveInsightPayload[] }>('/agent/proactive/check');
+}
+
+// --- Pulse Survey ---
+
+export interface PulseSurveyQuestion {
+  id: string;
+  type: 'rating' | 'choice' | 'text';
+  text: string;
+  required?: boolean;
+  options?: string[];
+  minLabel?: string;
+  maxLabel?: string;
+}
+
+export interface PulseSurvey {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  periodType: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  questions: PulseSurveyQuestion[];
+}
+
+export interface PulseSurveyResultsPayload {
+  periodStart: string;
+  periodEnd: string;
+  totalResponses: number;
+  sentimentDistribution: { positive: number; neutral: number; negative: number; mixed: number };
+  averageSentimentScore: number;
+  departmentHeatmap: Array<{
+    departmentName: string;
+    avgSentiment: number;
+    responseCount: number;
+    topKeywords: string[];
+  }>;
+  questionAverages: Array<{
+    questionId: string;
+    questionText: string;
+    type: string;
+    average?: number;
+    distribution?: Record<string, number>;
+  }>;
+  topKeywords: Array<{ keyword: string; count: number }>;
+}
+
+export function getActivePulseSurvey() {
+  return apiRequest<PulseSurvey | null>('/agent/employee-service/pulse-survey');
+}
+
+export function submitPulseSurveyResponse(payload: { surveyId: string; answers: Record<string, unknown> }) {
+  return apiRequest<{ success: boolean }>('/agent/employee-service/pulse-survey/respond', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function getPulseSurveyResults(period = '30d') {
+  return apiRequest<PulseSurveyResultsPayload>(`/agent/pulse-survey/results?period=${encodeURIComponent(period)}`);
+}

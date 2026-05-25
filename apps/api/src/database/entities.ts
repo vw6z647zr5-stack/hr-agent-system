@@ -5,6 +5,7 @@ import {
   LeaveRequestEntity,
   OvertimeRequestEntity,
 } from '../attendance/attendance.entities';
+import { PulseSurveyEntity, PulseSurveyResponseEntity } from '../agents/pulse-survey.entities';
 import { AuditLogEntity } from '../audit/audit.entity';
 import { CompanyEntity } from '../company/company.entity';
 import {
@@ -35,6 +36,8 @@ import {
 
 export const DATABASE_ENTITIES = [
   CompanyEntity,
+  PulseSurveyEntity,
+  PulseSurveyResponseEntity,
   UserEntity,
   DepartmentEntity,
   PositionEntity,

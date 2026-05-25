@@ -2,6 +2,7 @@ import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -15,21 +16,33 @@ import { AuthenticatedUser } from '../users/user.entity';
 import { getCorsOptions, getJwtSecret } from '../config/security';
 import { UsersService } from '../users/users.service';
 import { AuthSessionService } from '../auth/auth-session.service';
+import { ProactiveAgentService, type ProactiveInsight } from './services/proactive-agent.service';
+import { Injectable, Logger } from '@nestjs/common';
 
+@Injectable()
 @WebSocketGateway({
   namespace: '/agents',
   cors: getCorsOptions(),
 })
-export class AgentGateway implements OnGatewayConnection {
+export class AgentGateway implements OnGatewayConnection, OnGatewayInit {
   @WebSocketServer()
   server!: Server;
+
+  private readonly logger = new Logger(AgentGateway.name);
 
   constructor(
     private readonly agentService: AgentService,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly authSessionService: AuthSessionService,
+    private readonly proactiveAgent: ProactiveAgentService,
   ) {}
+
+  afterInit(): void {
+    this.proactiveAgent.setOnInsightGenerated((insight: ProactiveInsight) => {
+      this.broadcastProactiveInsight(insight);
+    });
+  }
 
   async handleConnection(client: Socket): Promise<void> {
     await this.getUserFromSocket(client);
@@ -45,6 +58,11 @@ export class AgentGateway implements OnGatewayConnection {
     const response = await this.agentService.employeeServiceChat(user, payload);
     client.emit('employee-service:reply', response);
     return response;
+  }
+
+  /** 将主动洞察广播给所有已连接的客户端。 */
+  broadcastProactiveInsight(insight: ProactiveInsight): void {
+    this.server.emit('proactive:insight', insight);
   }
 
   private async getUserFromSocket(client: Socket): Promise<AuthenticatedUser> {

@@ -1,6 +1,9 @@
 import { RobotOutlined, CloseOutlined } from '@ant-design/icons';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { io, type Socket } from 'socket.io-client';
 import { AgentChatPanel } from './AgentChatPanel';
+import { SOCKET_BASE_URL } from '../api/http';
+import { authStore } from '../state/auth.store';
 
 const DRAG_THRESHOLD = 5;
 const ICON = 56;
@@ -10,7 +13,9 @@ const GAP = 16;
 const EDGE = 16;
 
 export function FloatingAssistant() {
+  const token = authStore((s) => s.token);
   const [open, setOpen] = useState(false);
+  const [alertCount, setAlertCount] = useState(0);
   const [pos, setPos] = useState(() => ({
     x: window.innerWidth - ICON - EDGE,
     y: window.innerHeight - ICON - EDGE,
@@ -19,6 +24,21 @@ export function FloatingAssistant() {
   const dragStart = useRef({ x: 0, y: 0 });
   const posStart = useRef({ x: 0, y: 0 });
   const moved = useRef(false);
+
+  // 通过 WebSocket 监听主动洞察推送
+  useEffect(() => {
+    if (!token) return;
+    const socket = io(SOCKET_BASE_URL ? `${SOCKET_BASE_URL}/agents` : '/agents', {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+    const handler = () => setAlertCount((c) => c + 1);
+    socket.on('proactive:insight', handler);
+    return () => {
+      socket.off('proactive:insight', handler);
+      socket.disconnect();
+    };
+  }, [token]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -48,8 +68,9 @@ export function FloatingAssistant() {
   const handleClick = useCallback(() => {
     if (!moved.current) {
       setOpen((prev) => !prev);
+      if (alertCount > 0) setAlertCount(0);
     }
-  }, []);
+  }, [alertCount]);
 
   // Smart panel positioning: keep panel fully within viewport based on icon position
   const panelStyle = useMemo(() => {
@@ -63,26 +84,26 @@ export function FloatingAssistant() {
     // Horizontal: prefer right-aligned with icon, fallback to left-aligned
     const roomRight = vw - iconRight >= PANEL_W;
     if (roomRight) {
-      // Panel's right edge aligns with icon's right edge, clamped to viewport
+      // 面板右边缘与图标右边缘对齐，并限制在视口内。
       style.right = Math.max(EDGE, vw - iconRight);
     } else if (pos.x >= PANEL_W + GAP) {
-      // Panel's right edge aligns with icon's left edge
+      // 面板右边缘与图标左边缘对齐。
       style.right = vw - pos.x + GAP;
     } else {
-      // Not enough room on either side — center horizontally
+      // 两侧空间不足时水平居中。
       style.left = Math.max(EDGE, (vw - PANEL_W) / 2);
     }
 
     // Vertical: prefer above icon, fallback to below
     const roomAbove = pos.y >= PANEL_H + GAP;
     if (roomAbove) {
-      // Panel bottom edge just above icon
+      // 面板底边贴近图标上方。
       style.bottom = vh - pos.y + GAP;
     } else if (vh - iconBottom >= PANEL_H + GAP) {
-      // Panel top edge just below icon
+      // 面板顶边贴近图标下方。
       style.top = iconBottom + GAP;
     } else {
-      // Not enough room above or below — center vertically near icon
+      // 上下空间不足时在图标附近垂直居中。
       style.bottom = Math.max(EDGE, vh - pos.y + GAP);
     }
 
@@ -103,6 +124,12 @@ export function FloatingAssistant() {
         {/* Glow ring when closed */}
         {!open && (
           <span className="absolute inset-0 rounded-2xl bg-brand/20 animate-ping opacity-60" />
+        )}
+        {/* Alert badge */}
+        {alertCount > 0 && !open && (
+          <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md animate-scale-in">
+            {alertCount > 99 ? '99+' : alertCount}
+          </span>
         )}
         {open ? (
           <CloseOutlined className="relative text-xl text-white" />
