@@ -12,6 +12,8 @@
     "start": "node scripts/start-all.js",
     "dev:api": "npm --workspace @hr-agent-system/api run dev",
     "dev:web": "npm --workspace @hr-agent-system/web run dev",
+    "dev:desktop": "node scripts/start-desktop.js",
+    "start:desktop": "node scripts/start-desktop.js --prod",
     "build:api": "npm --workspace @hr-agent-system/api run build",
     "build:web": "npm --workspace @hr-agent-system/web run build",
     "build:miniprogram": "node scripts/check-miniprogram.js",

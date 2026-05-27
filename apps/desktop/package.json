@@ -4,7 +4,9 @@
   "private": true,
   "main": "src/main.js",
   "scripts": {
+    "dev": "node ../../scripts/start-desktop.js",
     "start": "electron .",
+    "start:prod": "node ../../scripts/start-desktop.js --prod",
     "check": "node ../../scripts/check-desktop.js",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
