@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../api/http';
 import { BrandMark } from '../components/BrandMark';
+import { useGsapStagger } from '../hooks';
 import { authStore } from '../state/auth.store';
 import type { AuthUser } from '../types';
 
@@ -32,6 +33,8 @@ export function LoginPage() {
   const { setSession } = authStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const brandPanelRef = useGsapStagger<HTMLElement>({ stagger: 0.08, y: 18, duration: 0.55 });
+  const formPanelRef = useGsapStagger<HTMLElement>({ delay: 0.15, stagger: 0.07, y: 14 });
 
   const onFinish = async (values: { username: string; password: string; remember?: boolean }) => {
     try {
@@ -55,22 +58,27 @@ export function LoginPage() {
       <div className="flex min-h-screen items-center justify-center px-4 py-10">
         <div className="mx-auto grid w-full max-w-6xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-panel lg:grid-cols-[1.08fr_0.92fr]">
           {/* Left: Brand panel */}
-          <section className="flex min-h-[600px] flex-col justify-between bg-[#101827] p-8 text-white sm:p-10 lg:p-12">
+          <section
+            ref={brandPanelRef}
+            className="flex min-h-[600px] flex-col justify-between bg-[#101827] p-8 text-white sm:p-10 lg:p-12"
+          >
             <div>
-              <BrandMark inverse />
+              <div data-gsap-item>
+                <BrandMark inverse />
+              </div>
               <div className="mt-14 max-w-xl">
-                <div className="inline-flex items-center gap-2 rounded-lg border border-teal-400/30 bg-teal-400/10 px-3 py-1.5 text-xs font-semibold text-teal-200">
+                <div data-gsap-item className="inline-flex items-center gap-2 rounded-lg border border-teal-400/30 bg-teal-400/10 px-3 py-1.5 text-xs font-semibold text-teal-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-teal-300 animate-pulse" />
                   明智人力资源管理系统
                 </div>
-                <Typography.Title className="!mb-5 !mt-5 !text-4xl !leading-tight !text-white sm:!text-5xl">
+                <Typography.Title data-gsap-item className="!mb-5 !mt-5 !text-4xl !leading-tight !text-white sm:!text-5xl">
                   用一个中文工作台管理
                   <br />
                   <span className="text-teal-100">
                     组织、招聘、绩效和员工服务
                   </span>
                 </Typography.Title>
-                <Typography.Paragraph className="!mb-0 !max-w-xl !text-base !leading-7 !text-teal-100/80">
+                <Typography.Paragraph data-gsap-item className="!mb-0 !max-w-xl !text-base !leading-7 !text-teal-100/80">
                   面向人力资源团队、业务经理、员工和候选人的统一门户，把数据看板、审批待办、风险提醒和智能问答整合到日常操作中。
                 </Typography.Paragraph>
               </div>
@@ -80,22 +88,23 @@ export function LoginPage() {
               {capabilityItems.map((item) => (
                 <div
                   key={item.label}
-                  className="group rounded-lg border border-white/12 bg-white/6 p-5 transition-all duration-300 hover:bg-white/10 hover:border-white/20"
+                  data-gsap-item
+                  className="group min-w-0 rounded-lg border border-white/12 bg-white/6 p-5 transition-all duration-300 hover:bg-white/10 hover:border-white/20"
                 >
                   <div className="mb-3 text-teal-300/80 text-lg">{item.icon}</div>
                   <div className="text-xs font-medium text-teal-300">{item.label}</div>
                   <div className="mt-3 text-2xl font-bold">{item.value}</div>
-                  <div className="mt-2 text-sm leading-6 text-teal-100/70">{item.helper}</div>
+                  <div className="mt-2 text-sm leading-6 text-teal-100/70 break-words">{item.helper}</div>
                 </div>
               ))}
             </div>
           </section>
 
           {/* Right: Login form */}
-          <section className="flex items-center justify-center p-8 sm:p-12">
+          <section ref={formPanelRef} className="flex items-center justify-center p-8 sm:p-12">
             <div className="w-full max-w-sm">
-              <div className="mb-8 flex items-center justify-between gap-4">
-                <div>
+              <div data-gsap-item className="mb-8 flex items-center justify-between gap-4">
+                <div className="min-w-0">
                   <Typography.Title level={2} className="!mb-1 !text-2xl">
                     登录系统
                   </Typography.Title>
@@ -106,7 +115,8 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <Card className="border-slate-200 shadow-card">
+              <div data-gsap-item>
+                <Card className="border-slate-200 shadow-card">
                 {error ? <Alert className="mb-5" type="error" showIcon message={error} closable onClose={() => setError(null)} /> : null}
 
                 <Form layout="vertical" onFinish={onFinish} initialValues={{ remember: false }} size="large">
@@ -180,7 +190,8 @@ export function LoginPage() {
                     </Link>
                   </div>
                 </div>
-              </Card>
+                </Card>
+              </div>
             </div>
           </section>
         </div>

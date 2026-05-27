@@ -7,3 +7,4 @@ export { useLoadingState } from './useLoadingState';
 export type { LoadingState } from './useLoadingState';
 export { useKeyboardShortcut } from './useKeyboardShortcut';
 export type { KeyboardShortcut, KeyboardShortcutHandler } from './useKeyboardShortcut';
+export { useGsapStagger } from './useGsapStagger';

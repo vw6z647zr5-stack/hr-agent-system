@@ -6,14 +6,14 @@ status: published
 version: 1.0.12
 owner: 系统自动生成
 reviewer: 系统自动审核
-submittedAt: 2026-05-27T05:10:09.606Z
+submittedAt: 2026-05-27T08:41:34.661Z
 approvedBy: 系统自动审核
-approvedAt: 2026-05-27T05:10:09.606Z
+approvedAt: 2026-05-27T08:41:34.661Z
 approvalComment: 自动同步生成的已发布文档。
 effectiveDate: 2026-05-27
 tags: 公司基础信息, 结构化事实, 自动生成
 reviewNotes: 由结构化公司基础信息中心自动同步，仅收录已发布字段。
-lastPublishedAt: 2026-05-27T05:10:09.606Z
+lastPublishedAt: 2026-05-27T08:41:34.661Z
 ---
 
 # 公司基础信息中心

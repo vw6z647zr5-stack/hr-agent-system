@@ -302,3 +302,51 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.55);
 }
+
+/* ---- Overlap guards ---- *
+ * Cards/lists with side-by-side icon + text frequently overflow on narrow
+ * widths. These rules give shrinkable text columns a baseline safety net so
+ * long Chinese strings wrap instead of pushing siblings out of bounds.
+ */
+.ant-card,
+.ant-card-body {
+  min-width: 0;
+}
+
+.ant-list-item-meta-title,
+.ant-list-item-meta-description,
+.ant-typography {
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.ant-list-item {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.ant-tag {
+  white-space: normal;
+  max-width: 100%;
+}
+
+/* Decorative gradients/blobs inside cards must never intercept clicks
+ * or push above text. Components opt-in by adding `.deco-layer`. */
+.deco-layer {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.deco-layer + * {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-shimmer,
+  .pulse-ring::after {
+    animation: none !important;
+  }
+}
