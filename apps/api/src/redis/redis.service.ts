@@ -6,6 +6,12 @@ type CachedValue = {
   expiresAt?: number;
 };
 
+type RedisHealthStatus = {
+  status: 'up' | 'degraded' | 'disabled' | 'starting';
+  mode: 'redis' | 'memory';
+  message?: string;
+};
+
 function parseJsonSafely<T>(value: string): T | null {
   try {
     return JSON.parse(value) as T;
@@ -53,7 +59,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (!this.connectionFailed) {
         this.isReady = false;
       }
-      // Swallow ECONNREFUSED after first occurrence to prevent log storm
+      // 首次连接失败后降噪，避免 Redis 不可用时刷屏。
       if (err?.message?.includes('ECONNREFUSED') || (err as any)?.code === 'ECONNREFUSED') {
         if (!this.connectionFailed) {
           this.connectionFailed = true;
@@ -76,6 +82,48 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     if (this.client) {
       await this.client.quit().catch(() => undefined);
+    }
+  }
+
+  async getHealthStatus(): Promise<RedisHealthStatus> {
+    if (!process.env.REDIS_URL?.trim()) {
+      return {
+        status: 'disabled',
+        mode: 'memory',
+        message: '未配置 Redis 地址，已使用进程内缓存。',
+      };
+    }
+
+    if (!this.client || !this.isRedisEnabled) {
+      return {
+        status: 'degraded',
+        mode: 'memory',
+        message: 'Redis 不可用，已使用进程内缓存。',
+      };
+    }
+
+    if (!this.isReady) {
+      return {
+        status: this.connectionFailed ? 'degraded' : 'starting',
+        mode: 'memory',
+        message: this.connectionFailed ? 'Redis 连接失败，已使用进程内缓存。' : 'Redis 正在连接。',
+      };
+    }
+
+    try {
+      await this.client.ping();
+      return {
+        status: 'up',
+        mode: 'redis',
+      };
+    } catch (error) {
+      this.isReady = false;
+      this.connectionFailed = true;
+      return {
+        status: 'degraded',
+        mode: 'memory',
+        message: error instanceof Error ? error.message : 'Redis ping 失败，已使用进程内缓存。',
+      };
     }
   }
 

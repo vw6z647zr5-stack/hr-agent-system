@@ -10,9 +10,12 @@ import {
 import type { Request, Response } from 'express';
 import { MulterError } from 'multer';
 import { QueryFailedError } from 'typeorm';
+import { Logger } from '../logger';
+import { getRequestId } from '../request-context';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  private readonly logger = Logger.for('ApiExceptionFilter');
   catch(exception: unknown, host: ArgumentsHost) {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
@@ -20,11 +23,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const normalized = this.normalizeException(exception, request);
     const status = normalized.getStatus();
     const payload = normalized.getResponse();
+    const requestId = getRequestId();
 
     response.status(status).json({
       statusCode: status,
       path: request.url,
       timestamp: new Date().toISOString(),
+      ...(requestId ? { requestId } : {}),
       ...(typeof payload === 'string' ? { message: payload } : payload),
     });
   }
@@ -42,7 +47,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
       return this.normalizeQueryFailedError(exception, request);
     }
 
-    console.error('[UnhandledError]', request.method, request.url, exception);
+    this.logger.error('unhandled_exception', exception, {
+      method: request.method,
+      url: request.url,
+    });
     return new InternalServerErrorException('服务器内部错误，请稍后再试。');
   }
 
@@ -61,14 +69,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
   private normalizeQueryFailedError(error: QueryFailedError, request: Request) {
     const driverError = error.driverError as { code?: string; detail?: string; message?: string; table?: string } | undefined;
 
-    console.error(
-      '[QueryFailedError]',
-      request.method,
-      request.url,
-      'code:', driverError?.code,
-      'table:', driverError?.table,
-      'detail:', driverError?.detail ?? driverError?.message ?? error.message,
-    );
+    this.logger.error('query_failed', error, {
+      method: request.method,
+      url: request.url,
+      pgCode: driverError?.code,
+      table: driverError?.table,
+      detail: driverError?.detail ?? driverError?.message ?? error.message,
+    });
 
     if (driverError?.code === '23505') {
       return new ConflictException('记录已存在，请检查编号、邮箱或名称是否重复。');

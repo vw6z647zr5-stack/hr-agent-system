@@ -65,6 +65,7 @@ docker compose up --build
 
 - 前端：`http://localhost:8080`
 - 后端接口：`http://localhost:3000/api`
+- 健康检查：`http://localhost:3000/api/health/ready`
 - 用户头像：`http://localhost:3000/uploads/user-photos/...`
 - 合同、工资单和简历等敏感附件需通过带访问令牌的下载接口获取，不提供公开直链。
 
@@ -109,6 +110,12 @@ npm run dev:web
 
 - 前端：`http://localhost:5173`
 - 后端：`http://localhost:3000/api`
+- 健康检查：`http://localhost:3000/api/health/ready`
+
+本地开发默认使用项目专用端口，避免和本机已安装的 PostgreSQL 或 Redis 冲突：
+
+- PostgreSQL：`127.0.0.1:15432`
+- Redis：`127.0.0.1:16379`
 
 ## 数据库初始化
 
@@ -125,6 +132,24 @@ psql -h localhost -U hr_admin -d hr_agent -f infra/postgres/seed.sql
 - `users`
 - `knowledge_base_articles`
 - `profile_change_requests`
+
+## 数据库迁移
+
+迁移文件位于 `infra/postgres/migrations/`，迁移状态记录在 `schema_migrations` 表中。
+
+```bash
+npm run migrate:status
+npm run migrate:dry-run
+npm run migrate:up
+```
+
+如果数据库已经通过当前 `init.sql` 和 `seed.sql` 初始化到最新结构，但还没有迁移记录，先写入基线记录：
+
+```bash
+npm run migrate:baseline
+```
+
+`baseline` 只写入迁移记录，不执行 SQL；旧结构数据库需要使用 `migrate:up` 逐个执行待处理迁移。
 
 ## 知识中心和本地检索增强
 
@@ -147,7 +172,9 @@ psql -h localhost -U hr_admin -d hr_agent -f infra/postgres/seed.sql
 `.env.example` 中的关键变量：
 
 - `DATABASE_URL`：后端连接 PostgreSQL 的地址
+- `POSTGRES_PORT`：本地 PostgreSQL 宿主机端口，默认 `15432`
 - `REDIS_URL`：Redis 连接地址
+- `REDIS_PORT`：本地 Redis 宿主机端口，默认 `16379`
 - `JWT_SECRET`：访问令牌签名密钥
 - `FILE_STORAGE_ROOT`：上传文件根目录，默认是 `uploads`
 - `AI_PROVIDER`：可设置为 `auto`、`deepseek`、`openai` 或 `mock`
@@ -239,7 +266,45 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 ## 验证命令
 
 ```bash
+npm run verify:commercial
 npm run lint
 npm run build
 node scripts/verify-full-flow.js
+```
+
+发布候选验收：
+
+```bash
+npm run release:check
+```
+
+API 会为每个请求返回 `X-Request-Id`，错误响应和审计日志会附带同一个 `requestId`，便于试点现场排查问题。
+
+服务启动后可执行 live 商用就绪检查：
+
+```bash
+npm run verify:commercial -- --live
+npm run release:check -- --live
+```
+
+基础商用试点的启动、健康检查、备份和恢复步骤见 [docs/operations.md](docs/operations.md)。
+
+## 备份命令
+
+```bash
+npm run backup:local
+```
+
+备份文件默认写入 `backups/<timestamp>/`，包含 PostgreSQL dump、上传文件、托管知识文档和文档历史快照。
+
+恢复前可先演练：
+
+```bash
+npm run restore:local -- backups/<timestamp>
+```
+
+确认恢复时追加显式确认参数：
+
+```bash
+npm run restore:local -- backups/<timestamp> --confirm-restore
 ```

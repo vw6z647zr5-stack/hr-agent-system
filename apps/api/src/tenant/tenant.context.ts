@@ -23,7 +23,7 @@ export class TenantContext {
   getCompanyId(): string {
     const store = storage.getStore();
     if (!store?.companyId) {
-      throw new InternalServerErrorException('Tenant context not set');
+      throw new InternalServerErrorException('租户上下文未初始化');
     }
     return store.companyId;
   }

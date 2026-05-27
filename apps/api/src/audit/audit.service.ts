@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { getRequestId } from '../common/request-context';
 import { TenantContext } from '../tenant/tenant.context';
 import { AuditLogEntity } from './audit.entity';
 
@@ -19,10 +20,10 @@ export class AuditService {
       action,
       entityType,
       entityId: entityId ?? null,
-      metadata: metadata ?? {},
+      metadata: this.withRequestMetadata(metadata),
     });
 
-    // fire-and-forget — don't block the request on audit persistence
+    // 审计写入异步执行，避免阻塞业务请求。
     this.auditLogRepository.save(entry).catch(() => {});
   }
 
@@ -40,9 +41,14 @@ export class AuditService {
       action,
       entityType,
       entityId: entityId ?? null,
-      metadata: metadata ?? {},
+      metadata: this.withRequestMetadata(metadata),
     });
 
     this.auditLogRepository.save(entry).catch(() => {});
+  }
+
+  private withRequestMetadata(metadata?: Record<string, unknown>) {
+    const requestId = getRequestId();
+    return requestId ? { ...(metadata ?? {}), requestId } : metadata ?? {};
   }
 }

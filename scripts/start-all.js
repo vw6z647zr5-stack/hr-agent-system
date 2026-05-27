@@ -119,14 +119,14 @@ async function isPortOpen(port) {
   }
 }
 
-async function httpHealthCheck(url, maxRetries = 30) {
+async function httpHealthCheck(url, maxRetries = 30, okStatuses = [200, 401, 404]) {
   for (let i = 0; i < maxRetries; i++) {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 2000);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timer);
-      if (res.ok || res.status === 401 || res.status === 404) return true; // any response = server up
+      if (okStatuses.includes(res.status)) return true;
     } catch { /* still waiting */ }
     await sleep(1000);
   }
@@ -287,23 +287,14 @@ async function startInfrastructure() {
   log('STEP', '2/5  启动基础设施 (PostgreSQL + Redis)', COLORS.yellow);
   divider();
 
-  // 检查容器是否已经运行。
+  // 先让 Compose 对齐当前配置；容器已运行时这是幂等操作，端口配置变更时会自动重建。
+  info('启动 Docker Compose 服务...');
   try {
-    const pgRunning = await cmd('docker', ['ps', '--filter', `name=${PG_CONTAINER}`, '--format', '{{.Status}}']);
-    if (pgRunning.includes('Up') || pgRunning.includes('healthy')) {
-      ok('PostgreSQL 容器已运行');
-    } else {
-      throw new Error('容器未运行');
-    }
-  } catch {
-    info('启动 Docker Compose 服务...');
-    try {
-      await cmd('docker', ['compose', 'up', 'postgres', 'redis', '-d'], { cwd: ROOT, stdio: 'inherit' });
-      ok('Docker Compose 服务已启动');
-    } catch (err) {
-      error(`Docker Compose 启动失败: ${err.message}`);
-      return false;
-    }
+    await cmd('docker', ['compose', 'up', 'postgres', 'redis', '-d'], { cwd: ROOT, stdio: 'inherit' });
+    ok('Docker Compose 服务已启动');
+  } catch (err) {
+    error(`Docker Compose 启动失败: ${err.message}`);
+    return false;
   }
 
   // 等待 PostgreSQL 就绪。
@@ -375,9 +366,10 @@ async function startApi() {
     error(`API 进程启动失败: ${err.message}`);
   });
 
-  const healthy = await httpHealthCheck(`http://127.0.0.1:${API_PORT}/api`);
+  const readyUrl = `http://127.0.0.1:${API_PORT}/api/health/ready`;
+  const healthy = await httpHealthCheck(readyUrl, 30, [200]);
   if (healthy) {
-    ok(`API 服务就绪 → http://127.0.0.1:${API_PORT}/api ✓`);
+    ok(`API 服务就绪 → ${readyUrl} ✓`);
   } else {
     error(`API 服务启动超时 (${API_PORT})`);
     error('请检查终端中的 API 输出查找错误。');

@@ -70,7 +70,7 @@ export class PulseSurveyResponseEntity extends AuditableEntity {
   @Column({ type: 'jsonb', default: () => "'{}'" })
   answers!: Record<string, unknown>;
 
-  @Column({ length: 30, nullable: true })
+  @Column({ type: 'varchar', length: 30, nullable: true })
   aiSentimentLabel!: string | null;
 
   @Column({ type: 'numeric', precision: 4, scale: 2, nullable: true })

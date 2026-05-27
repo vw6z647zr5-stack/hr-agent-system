@@ -7,6 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { resolve } from 'node:path';
 import { AppModule } from './app.module';
 import { ApiExceptionFilter } from './common/filters/api-exception.filter';
+import { requestContextMiddleware } from './common/request-context';
 import {
   getCorsOptions,
   getFileStorageRoot,
@@ -22,6 +23,7 @@ async function bootstrap() {
 
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   app.setGlobalPrefix('api');
+  app.use(requestContextMiddleware);
   app.use(securityHeadersMiddleware);
   app.use(rateLimitMiddleware);
   app.useGlobalFilters(new ApiExceptionFilter());
@@ -46,7 +48,7 @@ async function bootstrap() {
   });
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('HR Agent System API')
+    .setTitle('智能人事系统 API')
     .setDescription('企业人力资源智能管理系统 API 文档')
     .setVersion('1.0')
     .addBearerAuth()

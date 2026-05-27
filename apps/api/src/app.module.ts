@@ -8,6 +8,7 @@ import { AttendanceModule } from './attendance/attendance.module';
 import { AuthModule } from './auth/auth.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { AuditActionInterceptor } from './common/interceptors/audit-action.interceptor';
 import { DATABASE_ENTITIES } from './database/entities';
 import { OrganizationModule } from './organization/organization.module';
 import { PayrollModule } from './payroll/payroll.module';
@@ -27,6 +28,7 @@ import { FeatureGuard } from './tenant/feature-guard';
 import { ENV_FILE_PATHS } from './config/env';
 import { getDatabaseUrl } from './config/security';
 import { WorkflowModule } from './workflows/workflow.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { WorkflowModule } from './workflows/workflow.module';
       logging: false,
       namingStrategy: new SnakeNamingStrategy(),
     }),
+    HealthModule,
     AuditModule,
     TenantModule,
     CompanyModule,
@@ -76,6 +79,10 @@ import { WorkflowModule } from './workflows/workflow.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: AuditActionInterceptor,
     },
   ],
 })

@@ -71,6 +71,14 @@ const allowedTerms = new Set([
   'Microsoft YaHei',
   'Oracle',
   'Java',
+  'HR Agent System',
+  'Zod',
+  'structured output',
+  'provider',
+  'migration runner',
+  'AWS Secrets Manager',
+  'HashiCorp Vault',
+  'Service Worker',
 ]);
 
 function walk(directory, output = []) {

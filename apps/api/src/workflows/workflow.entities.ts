@@ -21,7 +21,7 @@ export class WorkflowNotificationEntity extends AuditableEntity {
   @Column({ length: 40, default: 'system' })
   category!: string;
 
-  @Column({ length: 20, default: 'medium' })
+  @Column({ type: 'varchar', length: 20, default: 'medium' })
   priority!: WorkflowPriority;
 
   @Column({ length: 180 })
@@ -57,10 +57,10 @@ export class WorkflowTaskEntity extends AuditableEntity {
   @Column({ length: 40, default: 'general' })
   category!: string;
 
-  @Column({ length: 20, default: 'medium' })
+  @Column({ type: 'varchar', length: 20, default: 'medium' })
   priority!: WorkflowPriority;
 
-  @Column({ length: 30, default: 'pending' })
+  @Column({ type: 'varchar', length: 30, default: 'pending' })
   status!: WorkflowTaskStatus;
 
   @Column({ length: 180 })

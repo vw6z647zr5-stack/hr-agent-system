@@ -1,6 +1,7 @@
 import './env';
 import { randomBytes } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { getRequestId } from '../common/request-context';
 
 const insecureJwtSecrets = new Set([
   '',
@@ -90,12 +91,14 @@ export function getDatabaseUrl() {
   const database = process.env.POSTGRES_DB?.trim();
   const username = process.env.POSTGRES_USER?.trim();
   const password = process.env.POSTGRES_PASSWORD?.trim();
+  const host = process.env.POSTGRES_HOST?.trim() || '127.0.0.1';
+  const port = process.env.POSTGRES_PORT?.trim() || '15432';
 
   if (!database || !username || !password) {
     throw new Error('DATABASE_URL_REQUIRED');
   }
 
-  return `postgres://${encodeURIComponent(username)}:${encodeURIComponent(password)}@localhost:5432/${encodeURIComponent(database)}`;
+  return `postgres://${encodeURIComponent(username)}:${encodeURIComponent(password)}@${host}:${port}/${encodeURIComponent(database)}`;
 }
 
 export function getHost() {
@@ -146,8 +149,8 @@ export function getCorsOptions() {
       callback(null, isCorsOriginAllowed(origin));
     },
     methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With'],
-    exposedHeaders: ['Content-Disposition'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With', 'X-Request-Id'],
+    exposedHeaders: ['Content-Disposition', 'X-Request-Id'],
     maxAge: 86400,
   };
 }
@@ -230,11 +233,13 @@ export function rateLimitMiddleware(request: Request, response: Response, next: 
   response.setHeader('RateLimit-Reset', String(Math.ceil(current.resetAt / 1000)));
 
   if (current.count > max) {
+    const requestId = getRequestId();
     response.status(429).json({
       statusCode: 429,
       message: '请求过于频繁，请稍后再试。',
       timestamp: new Date().toISOString(),
       path: request.url,
+      ...(requestId ? { requestId } : {}),
     });
     return;
   }

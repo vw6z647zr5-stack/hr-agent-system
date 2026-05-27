@@ -84,13 +84,13 @@ const defaultFeatures = {
 
 **演示账号**（如有种子数据）：
 - 管理员：admin / <密码>
-- HR：hr_admin / <密码>
+- 人力资源：hr_admin / <密码>
 - 经理：manager_zhang / <密码>
 - 员工：employee_li / <密码>
 
 ### 步骤 3：体验功能
 
-#### 管理员/HR 功能
+#### 管理员/人力资源功能
 
 1. **组织管理**
    - 部门管理

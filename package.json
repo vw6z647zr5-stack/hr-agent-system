@@ -26,8 +26,16 @@
     "verify:robustness": "node scripts/verify-robustness.js",
     "verify:surface": "node scripts/verify-surface.js",
     "verify:workflow": "node scripts/verify-workflow.js",
+    "verify:commercial": "node scripts/check-commercial-readiness.js",
+    "migrate:status": "node scripts/run-migrations.js status",
+    "migrate:dry-run": "node scripts/run-migrations.js dry-run",
+    "migrate:up": "node scripts/run-migrations.js up",
+    "migrate:baseline": "node scripts/run-migrations.js baseline",
+    "release:check": "node scripts/run-release-check.js",
     "verify": "npm run check:copy && npm run check:miniprogram && npm run check:desktop && npm run check:mobile && npm run lint && npm run build",
     "verify:full": "npm run verify && node scripts/verify-full-flow.js && npm run verify:surface",
+    "backup:local": "node scripts/backup-local-data.js",
+    "restore:local": "node scripts/restore-local-data.js",
     "recalc-scores": "node scripts/recalculate-all-scores.js"
   },
   "devDependencies": {

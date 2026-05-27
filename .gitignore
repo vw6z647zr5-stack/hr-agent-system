@@ -11,3 +11,4 @@ npm-debug.log*
 .edge-diagnose/
 .edge-smoke-login/
 uploads/
+backups/
