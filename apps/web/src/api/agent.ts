@@ -1,5 +1,48 @@
 import { apiRequest } from './http';
 
+export interface AgentRunTrace {
+  mode: 'llm' | 'fallback' | 'grounded';
+  provider: 'mock' | 'openai' | 'deepseek' | 'local' | string;
+  model: string;
+  toolNames: string[];
+  latencyMs: number;
+  generatedAt: string;
+  fallbackReason?: string;
+  errorMessage?: string;
+}
+
+export interface AgentRunLog {
+  id: string;
+  companyId: string;
+  userId: string | null;
+  employeeId: string | null;
+  agentType: string;
+  action: string;
+  mode: string;
+  provider: string;
+  model: string;
+  fallbackReason: string | null;
+  latencyMs: number;
+  toolNames: string[];
+  subjectType: string;
+  subjectId: string | null;
+  summary: string;
+  errorMessage: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentRunSummary {
+  total: number;
+  fallbackCount: number;
+  fallbackRate: number;
+  averageLatencyMs: number;
+  byMode: Record<string, number>;
+  byProvider: Record<string, number>;
+  byAgentType: Record<string, number>;
+}
+
 export interface AgentReference {
   id: string;
   title: string;
@@ -144,10 +187,23 @@ export function employeeServiceChat(message: string) {
   return apiRequest<{
     reply: string;
     references: AgentReference[];
+    aiTrace?: AgentRunTrace;
   }>('/agent/employee-service/chat', {
     method: 'POST',
     body: JSON.stringify({ message }),
   });
+}
+
+export function listAgentRuns(params: Record<string, string | number | undefined>) {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') {
+      search.set(key, String(value));
+    }
+  });
+
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest<{ items: AgentRunLog[]; summary: AgentRunSummary }>(`/agent/runs${suffix}`);
 }
 
 export function getKnowledgeBase() {

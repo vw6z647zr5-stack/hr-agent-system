@@ -1,3 +1,5 @@
+export { AgentRunLogListQueryDto } from './agent-run-log.dto';
+
 import { IsDateString, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class ParseResumeAgentDto {

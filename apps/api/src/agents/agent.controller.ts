@@ -4,6 +4,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthenticatedUser, Role } from '../users/user.entity';
 import {
+  AgentRunLogListQueryDto,
   EmployeeServiceChatDto,
   GenerateInterviewEmailDto,
   MatchScoreAgentDto,
@@ -11,6 +12,7 @@ import {
   PerformanceAnalyzeDto,
   PulseSurveyRespondDto,
 } from './agent.dto';
+import { AgentRunLogService } from './services/agent-run-log.service';
 import { AgentService } from './agent.service';
 import { CompanyFactsService } from './company-facts.service';
 import { ProactiveAgentService } from './services/proactive-agent.service';
@@ -22,6 +24,7 @@ import { PulseSurveyService } from './services/pulse-survey.service';
 export class AgentController {
   constructor(
     private readonly agentService: AgentService,
+    private readonly agentRunLogService: AgentRunLogService,
     private readonly companyFactsService: CompanyFactsService,
     private readonly proactiveAgent: ProactiveAgentService,
     private readonly pulseSurveyService: PulseSurveyService,
@@ -30,15 +33,15 @@ export class AgentController {
   /** 将已存简历或原始简历文本解析为结构化候选人数据。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Post('recruitment/parse-resume')
-  parseResume(@Body() payload: ParseResumeAgentDto) {
-    return this.agentService.parseResume(payload);
+  parseResume(@CurrentUser() user: AuthenticatedUser, @Body() payload: ParseResumeAgentDto) {
+    return this.agentService.parseResume(payload, user);
   }
 
   /** 计算候选人与岗位的匹配分，用于招聘筛选。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Post('recruitment/match-score')
-  matchScore(@Body() payload: MatchScoreAgentDto) {
-    return this.agentService.matchScore(payload);
+  matchScore(@CurrentUser() user: AuthenticatedUser, @Body() payload: MatchScoreAgentDto) {
+    return this.agentService.matchScore(payload, user);
   }
 
   /** 重新计算单名候选人的匹配分并写入数据库。 */
@@ -58,8 +61,8 @@ export class AgentController {
   /** 生成面试邀约邮件草稿。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Post('recruitment/generate-interview-email')
-  generateInterviewEmail(@Body() payload: GenerateInterviewEmailDto) {
-    return this.agentService.generateInterviewEmail(payload);
+  generateInterviewEmail(@CurrentUser() user: AuthenticatedUser, @Body() payload: GenerateInterviewEmailDto) {
+    return this.agentService.generateInterviewEmail(payload, user);
   }
 
   /** 与员工服务问答智能体对话。 */
@@ -116,8 +119,8 @@ export class AgentController {
   /** 分析绩效数据并生成改进建议。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Post('performance/analyze')
-  analyzePerformance(@Body() payload: PerformanceAnalyzeDto) {
-    return this.agentService.analyzePerformance(payload);
+  analyzePerformance(@CurrentUser() user: AuthenticatedUser, @Body() payload: PerformanceAnalyzeDto) {
+    return this.agentService.analyzePerformance(payload, user);
   }
 
   /** 返回汇总后的绩效洞察重点。 */
@@ -130,8 +133,8 @@ export class AgentController {
   /** 预测单名员工或全部员工的流失风险。 */
   @Roles(Role.ADMIN, Role.HR, Role.MANAGER)
   @Get('attrition/predict')
-  predictAttrition(@Query('employeeId') employeeId?: string) {
-    return this.agentService.predictAttrition(employeeId);
+  predictAttrition(@CurrentUser() user: AuthenticatedUser, @Query('employeeId') employeeId?: string) {
+    return this.agentService.predictAttrition(employeeId, user);
   }
 
   /** 返回当前高流失风险员工列表。 */
@@ -147,5 +150,12 @@ export class AgentController {
   async triggerProactiveCheck(@CurrentUser() user: AuthenticatedUser) {
     const insights = await this.proactiveAgent.runManualCheck(user.companyId!);
     return { insights };
+  }
+
+  /** 查询智能体运行台账，用于运营、排障和审计复核。 */
+  @Roles(Role.ADMIN, Role.HR)
+  @Get('runs')
+  listAgentRuns(@Query() query: AgentRunLogListQueryDto) {
+    return this.agentRunLogService.list(query);
   }
 }

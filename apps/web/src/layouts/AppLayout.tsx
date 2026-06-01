@@ -1,6 +1,7 @@
 import {
   BellOutlined,
   BookOutlined,
+  ControlOutlined,
   DashboardOutlined,
   FileSearchOutlined,
   LogoutOutlined,
@@ -148,6 +149,7 @@ export function AppLayout() {
     }
 
     if (user && ['admin', 'hr'].includes(user.role)) {
+      items.push({ key: '/agent-operations', icon: <ControlOutlined />, label: '智能体运行' });
       items.push({ key: '/profile-change-reviews', icon: <FileSearchOutlined />, label: '资料变更审批' });
     }
 
@@ -356,6 +358,7 @@ export function AppLayout() {
             if (q.includes('看板') || q.includes('dashboard')) { navigate('/dashboard'); setSearchOpen(false); }
             else if (q.includes('知识') || q.includes('文档')) { navigate('/knowledge-center'); setSearchOpen(false); }
             else if (q.includes('招聘') || q.includes('简历')) { navigate('/recruitment-workbench'); setSearchOpen(false); }
+            else if (q.includes('智能体') || q.includes('agent')) { navigate('/agent-operations'); setSearchOpen(false); }
             else if (q.includes('自助') || q.includes('员工')) { navigate('/self-service'); setSearchOpen(false); }
             else {
               Modal.info({
@@ -374,6 +377,7 @@ export function AppLayout() {
             { label: '招聘工作台', path: '/recruitment-workbench' },
             { label: '员工自助', path: '/self-service' },
             { label: '知识中心', path: '/knowledge-center' },
+            { label: '智能体运行', path: '/agent-operations' },
             { label: '员工档案', path: '/resources/employees' },
             { label: '职位发布', path: '/resources/job-postings' },
           ].map((item) => (

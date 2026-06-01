@@ -2,7 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CandidateEntity, JobPostingEntity, ResumeEntity } from '../../recruitment/recruitment.entities';
+import { AuthenticatedUser } from '../../users/user.entity';
 import { GenerateInterviewEmailDto, MatchScoreAgentDto, ParseResumeAgentDto } from '../agent.dto';
+import { AgentRunLogService } from './agent-run-log.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { createRecruitmentParseTool, createCandidateMatchTool, createInterviewEmailTool } from '../tools/recruitment.tools';
 
@@ -16,23 +18,34 @@ export class RecruitmentAgentService {
     @InjectRepository(JobPostingEntity)
     private readonly jobPostingsRepository: Repository<JobPostingEntity>,
     private readonly orchestrator: AgentOrchestratorService,
+    private readonly runLogService: AgentRunLogService,
   ) {}
 
-  async parseResume(payload: ParseResumeAgentDto) {
+  async parseResume(payload: ParseResumeAgentDto, user?: AuthenticatedUser) {
     const parsed = await this.parseResumeInternal(payload);
-    const summary = await this.orchestrator.runAgentOrFallback({
+    const { output: summary, trace: aiTrace } = await this.orchestrator.runAgentWithTrace({
       systemPrompt: '你是招聘助手，请用简洁专业的中文总结简历解析结果，突出亮点与潜在风险，供人力资源初筛使用。',
       input: `简历解析结果：${JSON.stringify(parsed)}`,
       tools: [createRecruitmentParseTool(this.orchestrator.createTool.bind(this.orchestrator), this.orchestrator.zod, this.parseResumeInternal.bind(this))],
       fallback: async () =>
         `候选人 ${parsed.name || '未识别姓名'} 已解析，识别到 ${Array.isArray(parsed.skills) ? parsed.skills.length : 0} 项关键技能。`,
     });
-    return { parsedProfile: parsed, summary };
+    this.runLogService.record({
+      user,
+      agentType: 'recruitment',
+      action: 'parse_resume',
+      trace: aiTrace,
+      subjectType: payload.resumeId ? 'resume' : 'resume_text',
+      subjectId: payload.resumeId ?? null,
+      summary,
+      metadata: { skillCount: Array.isArray(parsed.skills) ? parsed.skills.length : 0 },
+    });
+    return { parsedProfile: parsed, summary, aiTrace };
   }
 
-  async matchScore(payload: MatchScoreAgentDto) {
+  async matchScore(payload: MatchScoreAgentDto, user?: AuthenticatedUser) {
     const score = await this.matchScoreInternal(payload);
-    const summary = await this.orchestrator.runAgentOrFallback({
+    const { output: summary, trace: aiTrace } = await this.orchestrator.runAgentWithTrace({
       systemPrompt:
         `你是招聘助手，请用简洁专业的中文解释候选人与岗位的匹配情况。重要：匹配评分已由系统精确计算为 ${score.score} 分，你必须直接引用此分数，不得自行估算或修改。请说明主要依据（技能重合、经验匹配等）与建议动作。`,
       input: `候选人与岗位匹配评分详情：${JSON.stringify(score)}。请在你的回复中明确引用匹配分=${score.score}。`,
@@ -45,18 +58,44 @@ export class RecruitmentAgentService {
       await this.candidatesRepository.update(payload.candidateId, { aiMatchScore: score.score });
     }
 
-    return { ...score, summary };
+    this.runLogService.record({
+      user,
+      agentType: 'recruitment',
+      action: 'match_score',
+      trace: aiTrace,
+      subjectType: payload.candidateId ? 'candidate' : payload.jobPostingId ? 'job_posting' : 'custom_match',
+      subjectId: payload.candidateId ?? payload.jobPostingId ?? null,
+      summary,
+      metadata: {
+        score: score.score,
+        jobPostingId: payload.jobPostingId ?? null,
+        matchedSkillCount: score.matchedSkills.length,
+        missingSkillCount: score.missingSkills.length,
+      },
+    });
+
+    return { ...score, summary, aiTrace };
   }
 
-  async generateInterviewEmail(payload: GenerateInterviewEmailDto) {
+  async generateInterviewEmail(payload: GenerateInterviewEmailDto, user?: AuthenticatedUser) {
     const email = await this.generateInterviewEmailInternal(payload);
-    const summary = await this.orchestrator.runAgentOrFallback({
+    const { output: summary, trace: aiTrace } = await this.orchestrator.runAgentWithTrace({
       systemPrompt: '你是招聘助手，请用中文润色面试邀约邮件，保持专业、礼貌且简洁。',
       input: `面试邀约邮件草稿：${JSON.stringify(email)}`,
       tools: [createInterviewEmailTool(this.orchestrator.createTool.bind(this.orchestrator), this.orchestrator.zod, async (input) => this.generateInterviewEmailInternal(input as unknown as GenerateInterviewEmailDto))],
       fallback: async () => '面试邀约邮件草稿已生成，可直接交给人力资源审核后发送。',
     });
-    return { ...email, summary };
+    this.runLogService.record({
+      user,
+      agentType: 'recruitment',
+      action: 'generate_interview_email',
+      trace: aiTrace,
+      subjectType: payload.candidateId ? 'candidate' : 'interview_email',
+      subjectId: payload.candidateId ?? null,
+      summary,
+      metadata: { jobPostingId: payload.jobPostingId ?? null, interviewTime: payload.interviewTime },
+    });
+    return { ...email, summary, aiTrace };
   }
 
   async recalculateAndPersistScore(candidateId: string): Promise<number> {

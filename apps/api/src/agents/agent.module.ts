@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthModule } from '../auth/auth.module';
 import { CompanyEntity } from '../company/company.entity';
-import { KnowledgeBaseArticleEntity, ProfileChangeRequestEntity } from './agent-support.entities';
+import { AgentRunLogEntity, KnowledgeBaseArticleEntity, ProfileChangeRequestEntity } from './agent-support.entities';
 import {
   AttendanceEntity,
   LeaveBalanceEntity,
@@ -27,6 +27,7 @@ import { KnowledgeManagementService } from './knowledge-management.service';
 
 // 专家智能体服务导入
 import { AgentOrchestratorService } from './services/agent-orchestrator.service';
+import { AgentRunLogService } from './services/agent-run-log.service';
 import { RecruitmentAgentService } from './services/recruitment-agent.service';
 import { EmployeeAgentService } from './services/employee-agent.service';
 import { PerformanceAgentService } from './services/performance-agent.service';
@@ -47,6 +48,7 @@ import { PulseSurveyEntity, PulseSurveyResponseEntity } from './pulse-survey.ent
       CandidateEntity,
       JobPostingEntity,
       KnowledgeBaseArticleEntity,
+      AgentRunLogEntity,
       EmployeeEntity,
       LeaveBalanceEntity,
       PerformanceReviewEntity,
@@ -66,6 +68,7 @@ import { PulseSurveyEntity, PulseSurveyResponseEntity } from './pulse-survey.ent
   providers: [
     // 共享指挥者
     AgentOrchestratorService,
+    AgentRunLogService,
 
     // 专家智能体服务
     RecruitmentAgentService,
@@ -94,6 +97,7 @@ import { PulseSurveyEntity, PulseSurveyResponseEntity } from './pulse-survey.ent
     ProactiveAgentService,
     PulseSurveyService,
     AgentOrchestratorService,
+    AgentRunLogService,
     DocumentRagService,
     CompanyFactsService,
   ],

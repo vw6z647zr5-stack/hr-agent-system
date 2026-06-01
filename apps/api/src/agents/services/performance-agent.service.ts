@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantContext } from '../../tenant/tenant.context';
+import { AuthenticatedUser } from '../../users/user.entity';
 import { PerformanceGoalEntity, PerformanceReviewEntity } from '../../performance/performance.entities';
 import { PerformanceAnalyzeDto } from '../agent.dto';
+import { AgentRunLogService } from './agent-run-log.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import {
   createPerformanceDataTool,
@@ -20,11 +22,12 @@ export class PerformanceAgentService {
     private readonly goalsRepository: Repository<PerformanceGoalEntity>,
     private readonly orchestrator: AgentOrchestratorService,
     private readonly tenantContext: TenantContext,
+    private readonly runLogService: AgentRunLogService,
   ) {}
 
-  async analyzePerformance(payload: PerformanceAnalyzeDto) {
+  async analyzePerformance(payload: PerformanceAnalyzeDto, user?: AuthenticatedUser) {
     const raw = await this.queryPerformanceData(payload);
-    const summary = await this.orchestrator.runAgentOrFallback({
+    const { output: summary, trace: aiTrace } = await this.orchestrator.runAgentWithTrace({
       systemPrompt: '你是绩效分析助手，请用中文识别趋势、高绩效员工、需关注员工，并给出可执行建议。',
       input: JSON.stringify(raw),
       tools: [
@@ -34,7 +37,21 @@ export class PerformanceAgentService {
       ],
       fallback: async () => this.buildPerformanceFallback(raw),
     });
-    return { ...raw, summary };
+    this.runLogService.record({
+      user,
+      agentType: 'performance',
+      action: 'analyze',
+      trace: aiTrace,
+      subjectType: payload.employeeId ? 'employee' : payload.departmentId ? 'department' : payload.cycleId ? 'performance_cycle' : 'performance_scope',
+      subjectId: payload.employeeId ?? payload.departmentId ?? payload.cycleId ?? null,
+      summary,
+      metadata: {
+        reviewCount: raw.reviews.length,
+        goalCount: raw.goals.length,
+        averageScore: raw.averageScore,
+      },
+    });
+    return { ...raw, summary, aiTrace };
   }
 
   async getPerformanceInsights() {

@@ -1,4 +1,4 @@
-import { KnowledgeBaseArticleEntity, ProfileChangeRequestEntity } from '../agents/agent-support.entities';
+import { AgentRunLogEntity, KnowledgeBaseArticleEntity, ProfileChangeRequestEntity } from '../agents/agent-support.entities';
 import {
   AttendanceEntity,
   LeaveBalanceEntity,
@@ -59,6 +59,7 @@ export const DATABASE_ENTITIES = [
   SalaryRecordEntity,
   PayslipEntity,
   KnowledgeBaseArticleEntity,
+  AgentRunLogEntity,
   ProfileChangeRequestEntity,
   AuditLogEntity,
   WorkflowNotificationEntity,

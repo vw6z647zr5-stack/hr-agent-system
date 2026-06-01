@@ -2,10 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TenantContext } from '../../tenant/tenant.context';
+import { AuthenticatedUser } from '../../users/user.entity';
 import { AttendanceEntity, LeaveRequestEntity, OvertimeRequestEntity } from '../../attendance/attendance.entities';
 import { EmployeeEntity } from '../../organization/organization.entities';
 import { PerformanceReviewEntity } from '../../performance/performance.entities';
 import { ProfileChangeRequestEntity } from '../agent-support.entities';
+import { AgentRunLogService } from './agent-run-log.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 import { createBehaviorAggregationTool, createRiskScoringTool, createWarningReportTool } from '../tools/attrition.tools';
 import type { AttritionFactorBreakdown, AttritionRiskProfile } from '../agent.dto';
@@ -27,12 +29,13 @@ export class AttritionAgentService {
     private readonly profileChangeRepository: Repository<ProfileChangeRequestEntity>,
     private readonly orchestrator: AgentOrchestratorService,
     private readonly tenantContext: TenantContext,
+    private readonly runLogService: AgentRunLogService,
   ) {}
 
-  async predictAttrition(employeeId?: string) {
+  async predictAttrition(employeeId?: string, user?: AuthenticatedUser) {
     if (employeeId) {
       const profile = await this.buildAttritionProfileV2(employeeId);
-      const summary = await this.orchestrator.runAgentOrFallback({
+      const { output: summary, trace: aiTrace } = await this.orchestrator.runAgentWithTrace({
         systemPrompt: '你是离职风险助手，请用中文解释离职风险分数、主要驱动因素与干预建议。',
         input: JSON.stringify(profile),
         tools: [
@@ -42,7 +45,21 @@ export class AttritionAgentService {
         ],
         fallback: async () => this.buildAttritionFallback(profile as unknown as Record<string, unknown>),
       });
-      return { ...profile, summary } as Record<string, unknown>;
+      this.runLogService.record({
+        user,
+        agentType: 'attrition',
+        action: 'predict',
+        trace: aiTrace,
+        subjectType: 'employee',
+        subjectId: employeeId,
+        summary,
+        metadata: {
+          riskScore: profile.riskScore,
+          riskLevel: profile.riskLevel,
+          factorCount: profile.factorBreakdown.length,
+        },
+      });
+      return { ...profile, summary, aiTrace } as Record<string, unknown>;
     }
 
     const companyId = this.tenantContext.getCompanyId();

@@ -3,6 +3,24 @@ import { Injectable, Logger } from '@nestjs/common';
 type ToolResult = Record<string, unknown>;
 type AiProvider = 'mock' | 'openai' | 'deepseek';
 
+export type AgentRunMode = 'llm' | 'fallback' | 'grounded';
+
+export interface AgentRunTrace {
+  mode: AgentRunMode;
+  provider: AiProvider | 'local';
+  model: string;
+  toolNames: string[];
+  latencyMs: number;
+  generatedAt: string;
+  fallbackReason?: 'mock_provider' | 'missing_api_key' | 'llm_error' | 'grounded_answer';
+  errorMessage?: string;
+}
+
+export interface AgentRunResult {
+  output: string;
+  trace: AgentRunTrace;
+}
+
 export type AgentTool = {
   name: string;
   description: string;
@@ -61,19 +79,47 @@ export class AgentOrchestratorService {
     baseURL?: string;
   } {
     const configuredProvider = (process.env.AI_PROVIDER ?? 'auto').toLowerCase();
-    const deepseekKey = process.env.DEEPSEEK_API_KEY ?? process.env.OPENAI_API_KEY;
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
-    if (configuredProvider === 'deepseek' || (configuredProvider === 'auto' && deepseekKey)) {
+    if (configuredProvider === 'mock') {
+      return { provider: 'mock', model: 'mock' };
+    }
+
+    if (configuredProvider === 'deepseek') {
       return {
         provider: 'deepseek',
         apiKey: deepseekKey,
-        model: process.env.DEEPSEEK_MODEL ?? process.env.OPENAI_MODEL ?? 'deepseek-chat',
-        baseURL: process.env.DEEPSEEK_BASE_URL ?? process.env.OPENAI_BASE_URL ?? 'https://api.deepseek.com',
+        model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat',
+        baseURL: process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com',
       };
     }
 
-    if (configuredProvider === 'openai' || (configuredProvider === 'auto' && openaiKey)) {
+    if (configuredProvider === 'openai') {
+      return {
+        provider: 'openai',
+        apiKey: openaiKey,
+        model: process.env.OPENAI_MODEL ?? 'gpt-4.1-mini',
+        baseURL: process.env.OPENAI_BASE_URL,
+      };
+    }
+
+    if (configuredProvider !== 'auto') {
+      this.logger.warn(`未知 AI_PROVIDER=${configuredProvider}，已使用 mock provider。`);
+      return { provider: 'mock', model: 'mock' };
+    }
+
+    // auto: DeepSeek > OpenAI > mock
+    if (deepseekKey) {
+      return {
+        provider: 'deepseek',
+        apiKey: deepseekKey,
+        model: process.env.DEEPSEEK_MODEL ?? 'deepseek-chat',
+        baseURL: process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com',
+      };
+    }
+
+    if (openaiKey) {
       return {
         provider: 'openai',
         apiKey: openaiKey,
@@ -87,16 +133,46 @@ export class AgentOrchestratorService {
 
   // --- 核心代理运行器 ---
 
-  async runAgentOrFallback(params: {
+  async runAgentWithTrace(params: {
     systemPrompt: string;
     input: string;
     tools: AgentTool[];
     fallback: () => Promise<string>;
-  }): Promise<string> {
+  }): Promise<AgentRunResult> {
     const runtime = this.resolveAiRuntime();
+    const toolNames = params.tools.map((t) => t.name);
+    const start = Date.now();
 
-    if (runtime.provider === 'mock' || !runtime.apiKey) {
-      return params.fallback();
+    if (runtime.provider === 'mock') {
+      const output = await params.fallback();
+      return {
+        output,
+        trace: {
+          mode: 'fallback',
+          provider: 'mock',
+          model: 'mock',
+          toolNames,
+          latencyMs: Date.now() - start,
+          generatedAt: new Date().toISOString(),
+          fallbackReason: 'mock_provider',
+        },
+      };
+    }
+
+    if (!runtime.apiKey) {
+      const output = await params.fallback();
+      return {
+        output,
+        trace: {
+          mode: 'fallback',
+          provider: runtime.provider,
+          model: runtime.model,
+          toolNames,
+          latencyMs: Date.now() - start,
+          generatedAt: new Date().toISOString(),
+          fallbackReason: 'missing_api_key',
+        },
+      };
     }
 
     try {
@@ -130,14 +206,60 @@ export class AgentOrchestratorService {
       });
 
       const result = await executor.invoke({ input: params.input });
-      return this.normalizeVisibleText(String(result.output ?? ''));
+      const output = this.normalizeVisibleText(String(result.output ?? ''));
+      return {
+        output,
+        trace: {
+          mode: 'llm',
+          provider: runtime.provider,
+          model: runtime.model,
+          toolNames,
+          latencyMs: Date.now() - start,
+          generatedAt: new Date().toISOString(),
+        },
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `智能代理执行失败，provider=${runtime.provider} model=${runtime.model}；已回退到确定性模式。${message}`,
       );
-      return params.fallback();
+      const output = await params.fallback();
+      return {
+        output,
+        trace: {
+          mode: 'fallback',
+          provider: runtime.provider,
+          model: runtime.model,
+          toolNames,
+          latencyMs: Date.now() - start,
+          generatedAt: new Date().toISOString(),
+          fallbackReason: 'llm_error',
+          errorMessage: message,
+        },
+      };
     }
+  }
+
+  async runAgentOrFallback(params: {
+    systemPrompt: string;
+    input: string;
+    tools: AgentTool[];
+    fallback: () => Promise<string>;
+  }): Promise<string> {
+    const result = await this.runAgentWithTrace(params);
+    return result.output;
+  }
+
+  buildGroundedTrace(toolNames: string[] = []): AgentRunTrace {
+    return {
+      mode: 'grounded',
+      provider: 'local',
+      model: 'rule-based',
+      toolNames,
+      latencyMs: 0,
+      generatedAt: new Date().toISOString(),
+      fallbackReason: 'grounded_answer',
+    };
   }
 
   // --- 文本工具 ---

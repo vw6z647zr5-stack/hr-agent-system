@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { existsSync, readFileSync } = require('node:fs');
+const { existsSync, readFileSync, readdirSync } = require('node:fs');
 const { join } = require('node:path');
 const { spawnSync } = require('node:child_process');
 
@@ -106,19 +106,28 @@ function checkFiles() {
     'apps/api/src/health/health.service.ts',
     'infra/postgres/init.sql',
     'infra/postgres/seed.sql',
-    'infra/postgres/migrations/001-multi-tenant.sql',
-    'infra/postgres/migrations/002-covering-indexes.sql',
-    'infra/postgres/migrations/003-workflow-notifications.sql',
-    'infra/postgres/migrations/004-rich-demo-data.sql',
     'scripts/run-migrations.js',
   ];
+  const migrationsDir = join(root, 'infra', 'postgres', 'migrations');
+  const migrationFiles = existsSync(migrationsDir)
+    ? readdirSync(migrationsDir)
+        .filter((name) => /^\d+-.+\.sql$/.test(name))
+        .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+        .map((name) => `infra/postgres/migrations/${name}`)
+    : [];
 
-  for (const file of requiredFiles) {
+  for (const file of [...requiredFiles, ...migrationFiles]) {
     if (existsSync(join(root, file))) {
       pass(file);
     } else {
       fail(file, 'missing');
     }
+  }
+
+  if (migrationFiles.length === 0) {
+    fail('infra/postgres/migrations', '未发现 SQL 迁移文件');
+  } else {
+    pass('数据库迁移文件', `${migrationFiles.length} 个`);
   }
 }
 

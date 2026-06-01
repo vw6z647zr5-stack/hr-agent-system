@@ -21,16 +21,16 @@ export class AgentService {
 
   // --- Recruitment delegation ---
 
-  parseResume(payload: ParseResumeAgentDto) {
-    return this.recruitmentAgent.parseResume(payload);
+  parseResume(payload: ParseResumeAgentDto, user?: AuthenticatedUser) {
+    return this.recruitmentAgent.parseResume(payload, user);
   }
 
-  matchScore(payload: MatchScoreAgentDto) {
-    return this.recruitmentAgent.matchScore(payload);
+  matchScore(payload: MatchScoreAgentDto, user?: AuthenticatedUser) {
+    return this.recruitmentAgent.matchScore(payload, user);
   }
 
-  generateInterviewEmail(payload: GenerateInterviewEmailDto) {
-    return this.recruitmentAgent.generateInterviewEmail(payload);
+  generateInterviewEmail(payload: GenerateInterviewEmailDto, user?: AuthenticatedUser) {
+    return this.recruitmentAgent.generateInterviewEmail(payload, user);
   }
 
   recalculateAndPersistScore(candidateId: string) {
@@ -57,8 +57,8 @@ export class AgentService {
 
   // --- Performance delegation ---
 
-  analyzePerformance(payload: PerformanceAnalyzeDto) {
-    return this.performanceAgent.analyzePerformance(payload);
+  analyzePerformance(payload: PerformanceAnalyzeDto, user?: AuthenticatedUser) {
+    return this.performanceAgent.analyzePerformance(payload, user);
   }
 
   getPerformanceInsights() {
@@ -67,8 +67,8 @@ export class AgentService {
 
   // --- Attrition delegation ---
 
-  predictAttrition(employeeId?: string) {
-    return this.attritionAgent.predictAttrition(employeeId);
+  predictAttrition(employeeId?: string, user?: AuthenticatedUser) {
+    return this.attritionAgent.predictAttrition(employeeId, user);
   }
 
   getHighRiskAttritionList() {

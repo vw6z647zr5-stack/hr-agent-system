@@ -11,6 +11,7 @@ import { EmployeeServiceChatDto } from '../agent.dto';
 import { CompanyFactsService } from '../company-facts.service';
 import { DocumentRagService, type RagReference } from '../document-rag.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
+import { AgentRunLogService } from './agent-run-log.service';
 import {
   createKnowledgeBaseSearchTool,
   createCompanyDocumentSearchTool,
@@ -33,6 +34,7 @@ export class EmployeeAgentService {
     private readonly companyFactsService: CompanyFactsService,
     private readonly redisService: RedisService,
     private readonly tenantContext: TenantContext,
+    private readonly runLogService: AgentRunLogService,
   ) {}
 
   async employeeServiceChat(user: AuthenticatedUser, payload: EmployeeServiceChatDto) {
@@ -48,9 +50,9 @@ export class EmployeeAgentService {
       : null;
     const groundedReply = this.buildEmployeeServiceGroundedAnswer(message, employee, leaveBalances, knowledge.articles, knowledge.documents);
 
-    const reply = groundedReply
-      ? groundedReply
-      : await this.orchestrator.runAgentOrFallback({
+    const { reply, aiTrace } = groundedReply
+      ? { reply: groundedReply, aiTrace: this.orchestrator.buildGroundedTrace() }
+      : await this.orchestrator.runAgentWithTrace({
           systemPrompt: '你是员工服务助手，请用清晰、简洁的中文回答制度与员工自助相关问题，并在可用时结合员工上下文。',
           input: JSON.stringify({ question: message, history, employee, leaveBalances, knowledgeBase: knowledge.articles, companyDocuments: knowledge.documents, companyFacts: knowledge.companyFacts }),
           tools: [
@@ -61,12 +63,27 @@ export class EmployeeAgentService {
             createLeaveBalanceLookupTool(this.orchestrator.createTool.bind(this.orchestrator), this.orchestrator.zod, this.lookupBalances.bind(this)),
           ],
           fallback: async () => this.buildEmployeeServiceFallback(message, employee, leaveBalances, knowledge.articles, knowledge.documents),
-        });
+        }).then((r) => ({ reply: r.output, aiTrace: r.trace }));
 
     const nextHistory = [...history.slice(-8), { role: 'user', content: message }, { role: 'assistant', content: reply }];
     await this.redisService.setJson(historyKey, nextHistory, 60 * 60 * 2);
 
-    return { reply, references: this.composeVisibleReferences(knowledge.articles, knowledge.documents) };
+    this.runLogService.record({
+      user,
+      agentType: 'employee_service',
+      action: 'chat',
+      trace: aiTrace,
+      subjectType: employeeId ? 'employee' : 'user',
+      subjectId: employeeId ?? user.userId,
+      summary: reply,
+      metadata: {
+        referenceCount: knowledge.articles.length + knowledge.documents.length,
+        companyFactCount: knowledge.companyFacts.length,
+        historyCount: history.length,
+      },
+    });
+
+    return { reply, references: this.composeVisibleReferences(knowledge.articles, knowledge.documents), aiTrace };
   }
 
   getKnowledgeBase() {

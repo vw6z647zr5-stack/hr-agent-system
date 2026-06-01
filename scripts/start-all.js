@@ -18,6 +18,7 @@ const { existsSync, copyFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { platform, cwd } = require('node:process');
 const { createInterface } = require('node:readline');
+const { launchMiniprogram } = require('./start-miniprogram');
 
 // ── Config ────────────────────────────────────────────────
 const ROOT = cwd();
@@ -474,12 +475,24 @@ function ready() {
   console.log('');
   console.log(`  ${COLORS.bold}前端界面${COLORS.reset}  ${COLORS.cyan}http://127.0.0.1:${WEB_PORT}${COLORS.reset}`);
   console.log(`  ${COLORS.bold}后端接口${COLORS.reset}  ${COLORS.cyan}http://127.0.0.1:${API_PORT}/api${COLORS.reset}`);
+  console.log(`  ${COLORS.bold}小程序工程${COLORS.reset}  ${COLORS.cyan}${join(ROOT, 'apps', 'miniprogram')}${COLORS.reset}`);
   console.log(`  ${COLORS.bold}演示账号${COLORS.reset}  ${COLORS.dim}请查看 README，并用 HR_DEMO_PASSWORD 配置脚本密码${COLORS.reset}`);
   console.log('');
 
   const opened = openBrowser(`http://127.0.0.1:${WEB_PORT}`);
   if (opened) ok('浏览器已打开');
   else info(`请手动打开 http://127.0.0.1:${WEB_PORT}`);
+
+  const miniprogram = launchMiniprogram();
+  if (miniprogram.ok) {
+    ok('微信开发者工具已打开小程序工程');
+  } else if (miniprogram.reason === 'missing-cli') {
+    warn('未找到微信开发者工具 CLI，已跳过自动打开小程序');
+    info(`请手动导入 ${miniprogram.projectRoot}`);
+  } else {
+    warn(`小程序自动打开失败: ${miniprogram.error?.message || miniprogram.reason}`);
+    info(`请手动导入 ${miniprogram.projectRoot}`);
+  }
 
   console.log('');
   console.log(COLORS.dim + '  按 Ctrl+C 停止所有服务...' + COLORS.reset);

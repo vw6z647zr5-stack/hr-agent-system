@@ -41,6 +41,9 @@ const CandidatePortalPage = lazy(async () => ({
 const KnowledgeCenterPage = lazy(async () => ({
   default: (await import('./pages/KnowledgeCenterPage')).KnowledgeCenterPage,
 }));
+const AgentOperationsPage = lazy(async () => ({
+  default: (await import('./pages/AgentOperationsPage')).AgentOperationsPage,
+}));
 
 export default function App() {
   const restore = authStore((state) => state.restore);
@@ -77,6 +80,9 @@ export default function App() {
                 <Route path="/recruitment-workbench" element={<RecruitmentWorkbenchPage />} />
                 <Route path="/self-service" element={<SelfServicePage />} />
                 <Route path="/resources/:resourceKey" element={<ResourceRoutePage />} />
+                <Route element={<ProtectedRoute roles={['admin', 'hr']} />}>
+                  <Route path="/agent-operations" element={<AgentOperationsPage />} />
+                </Route>
                 <Route element={<ProtectedRoute roles={['admin', 'hr', 'manager']} />}>
                   <Route path="/knowledge-center" element={<KnowledgeCenterPage />} />
                 </Route>

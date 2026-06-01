@@ -89,6 +89,43 @@ NestJS 控制器按资源和业务场景暴露接口，覆盖：
 5. 当 `AI_PROVIDER=mock` 或模型密钥不可用时，系统使用确定性规则回退。
 6. 必要结果会写入 Redis，并返回给前端。
 
+### Agent 控制面：AgentOrchestratorService
+
+所有智能助手均通过 `AgentOrchestratorService` 统一运行，该服务承担以下职责：
+
+1. **模型 provider 解析**（`resolveAiRuntime()`）：按 `AI_PROVIDER` 环境变量选择 provider。
+   - `AI_PROVIDER=deepseek`：仅使用 `DEEPSEEK_API_KEY`，不回落到 OpenAI key。
+   - `AI_PROVIDER=openai`：仅使用 `OPENAI_API_KEY`。
+   - `AI_PROVIDER=auto`（默认）：优先 DeepSeek（需 `DEEPSEEK_API_KEY`），其次 OpenAI（需 `OPENAI_API_KEY`），否则 mock。
+   - `AI_PROVIDER=mock`：强制使用确定性规则回退，即使环境中存在模型密钥。
+2. **带 trace 运行**（`runAgentWithTrace()`）：返回 `{ output, trace }`，trace 包含运行模式、provider、model、工具列表、延迟和回退原因。
+3. **兼容运行**（`runAgentOrFallback()`）：内部调用 `runAgentWithTrace()`，只返回字符串，保持现有调用兼容。
+4. **本地规则 trace**（`buildGroundedTrace()`）：供员工服务本地知识命中时生成 `grounded` 模式 trace。
+
+### 运行元数据字段（AgentRunTrace）
+
+每次智能助手调用会附加 `aiTrace` 字段，供可观测性和审计使用：
+
+| 字段 | 说明 |
+|---|---|
+| `mode` | `llm`（真实模型调用）、`fallback`（确定性回退）、`grounded`（本地知识命中） |
+| `provider` | `openai`、`deepseek`、`mock`、`local` |
+| `model` | 使用的模型名称 |
+| `toolNames` | 本次调用注册的工具列表 |
+| `latencyMs` | 端到端延迟（毫秒） |
+| `generatedAt` | ISO 8601 时间戳 |
+| `fallbackReason` | 回退原因：`mock_provider`、`missing_api_key`、`llm_error`、`grounded_answer` |
+| `errorMessage` | 模型调用异常时的错误摘要（不含密钥等敏感信息） |
+
+### Agent 运行台账
+
+系统会将主要智能体调用写入 `agent_run_logs`，用于运营、排障和审计复核。台账只保存运行元数据和短摘要，不保存完整原始输入、完整简历、薪酬明细或完整风险解释。
+
+- 写入范围：招聘解析、招聘匹配、面试邀约、员工服务问答、绩效分析、单员工离职风险预测。
+- 查询接口：`GET /api/agent/runs`，限 `admin` 和 `hr` 角色访问。
+- 查询能力：按智能体类型、动作、运行模式、provider、回退原因和业务主体过滤。
+- 前端入口：管理端侧边栏的“智能体运行”，展示回退比例、平均延迟、provider 分布、智能体分布和最近调用明细。
+
 ### 知识中心和本地检索增强
 
 - 员工服务助手会检索两类内部知识：
