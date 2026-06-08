@@ -6,15 +6,17 @@
  * 启动顺序:
  *   1. 检查前置条件 (.env, Docker, npm)
  *   2. 启动 infra (postgres + redis)
- *   3. 等待数据库就绪
- *   4. 并行启动 API 和 Web
- *   5. 打开浏览器
+ *   3. 对齐数据库迁移
+ *   4. 启动 API
+ *   5. 启动 Web
+ *   6. 打开浏览器
  *
  * Ctrl+C 可优雅关闭所有服务。
  */
 
 const { spawn, execSync } = require('node:child_process');
-const { existsSync, copyFileSync } = require('node:fs');
+const { randomBytes } = require('node:crypto');
+const { existsSync, readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 const { platform, cwd } = require('node:process');
 const { createInterface } = require('node:readline');
@@ -27,7 +29,6 @@ const WEB_PORT = 5173;
 const PG_CONTAINER = 'hr-agent-postgres';
 const REDIS_CONTAINER = 'hr-agent-redis';
 const DEMO_ADMIN_USERNAME = process.env.HR_ADMIN_USERNAME || 'hr_admin';
-const DEMO_PASSWORD = process.env.HR_DEMO_PASSWORD || process.env.HR_ADMIN_PASSWORD || '';
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -145,6 +146,84 @@ function openBrowser(url) {
   }
 }
 
+function randomSecret(length = 32) {
+  return randomBytes(Math.ceil(length * 0.75))
+    .toString('base64url')
+    .slice(0, length);
+}
+
+function parseEnvContent(content) {
+  const values = {};
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const separator = trimmed.indexOf('=');
+    if (separator <= 0) continue;
+    values[trimmed.slice(0, separator).trim()] = trimmed.slice(separator + 1).trim();
+  }
+  return values;
+}
+
+function serializeEnv(values, templateContent) {
+  const seen = new Set();
+  const lines = templateContent.split(/\r?\n/).map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) {
+      return line;
+    }
+
+    const key = trimmed.slice(0, trimmed.indexOf('=')).trim();
+    if (!(key in values)) {
+      return line;
+    }
+
+    seen.add(key);
+    return `${key}=${values[key]}`;
+  });
+
+  for (const [key, value] of Object.entries(values)) {
+    if (!seen.has(key)) {
+      lines.push(`${key}=${value}`);
+    }
+  }
+
+  return lines.join('\n').replace(/\n{3,}/g, '\n\n');
+}
+
+function createInitialEnv(examplePath, envPath) {
+  const template = readFileSync(examplePath, 'utf8');
+  const values = parseEnvContent(template);
+  const postgresPassword = randomSecret(32);
+  const redisPassword = randomSecret(32);
+
+  values.POSTGRES_PASSWORD = postgresPassword;
+  values.REDIS_PASSWORD = redisPassword;
+  values.JWT_SECRET = randomSecret(64);
+  values.POSTGRES_PORT = values.POSTGRES_PORT || '15432';
+  values.REDIS_PORT = values.REDIS_PORT || '16379';
+  values.DATABASE_URL = `postgres://${values.POSTGRES_USER || 'hr_admin'}:${postgresPassword}@127.0.0.1:${values.POSTGRES_PORT}/${values.POSTGRES_DB || 'hr_agent'}`;
+  values.REDIS_URL = `redis://:${redisPassword}@127.0.0.1:${values.REDIS_PORT}`;
+  values.AI_PROVIDER = values.AI_PROVIDER || 'auto';
+  values.HR_DEMO_PASSWORD = values.HR_DEMO_PASSWORD || 'admin123';
+
+  writeFileSync(envPath, serializeEnv(values, template), 'utf8');
+  Object.assign(process.env, values);
+}
+
+function loadEnvIntoProcess(envPath) {
+  if (!existsSync(envPath)) return;
+  const values = parseEnvContent(readFileSync(envPath, 'utf8'));
+  for (const [key, value] of Object.entries(values)) {
+    if (!(key in process.env)) {
+      process.env[key] = value.replace(/^['"]|['"]$/g, '');
+    }
+  }
+}
+
+function getDemoPassword() {
+  return process.env.HR_DEMO_PASSWORD || process.env.HR_ADMIN_PASSWORD || '';
+}
+
 // ── Banner ────────────────────────────────────────────────
 
 function banner() {
@@ -199,7 +278,7 @@ async function autoStartDockerDesktop() {
 }
 
 async function checkPrerequisites() {
-  log('STEP', '1/5  检查前置条件', COLORS.yellow);
+  log('STEP', '1/6  检查前置条件', COLORS.yellow);
   divider();
 
   // 检查 .env 配置。
@@ -210,9 +289,10 @@ async function checkPrerequisites() {
       error('.env.example 不存在，请先创建 .env 文件。');
       return false;
     }
-    copyFileSync(examplePath, envPath);
-    warn('未找到 .env，已从 .env.example 复制。请检查并配置必要的环境变量。');
+    createInitialEnv(examplePath, envPath);
+    ok('未找到 .env，已自动生成本机可用配置和随机密钥');
   } else {
+    loadEnvIntoProcess(envPath);
     ok('.env 已存在');
   }
 
@@ -285,7 +365,7 @@ async function checkPrerequisites() {
 // ── 第 2 步：启动基础设施 ───────────────────────────────────
 
 async function startInfrastructure() {
-  log('STEP', '2/5  启动基础设施 (PostgreSQL + Redis)', COLORS.yellow);
+  log('STEP', '2/6  启动基础设施 (PostgreSQL + Redis)', COLORS.yellow);
   divider();
 
   // 先让 Compose 对齐当前配置；容器已运行时这是幂等操作，端口配置变更时会自动重建。
@@ -335,12 +415,29 @@ async function startInfrastructure() {
   return true;
 }
 
+async function bootstrapDatabase() {
+  log('STEP', '3/6  对齐数据库迁移', COLORS.yellow);
+  divider();
+
+  info('执行数据库迁移 bootstrap...');
+  try {
+    await cmd('npm', ['run', 'migrate:bootstrap'], { cwd: ROOT, stdio: 'inherit' });
+    ok('数据库迁移已对齐');
+  } catch (err) {
+    error(`数据库迁移 bootstrap 失败: ${err.message}`);
+    return false;
+  }
+
+  console.log('');
+  return true;
+}
+
 // ── 第 3 步：启动 API ─────────────────────────────────────
 
 let apiProc = null;
 
 async function startApi() {
-  log('STEP', '3/5  启动后端 API 服务', COLORS.yellow);
+  log('STEP', '4/6  启动后端 API 服务', COLORS.yellow);
   divider();
 
   info('启动 NestJS API (SWC 编译 + 热重载)...');
@@ -380,7 +477,8 @@ async function startApi() {
   // API 就绪后自动刷新候选人匹配分。
   info('正在刷新所有候选人智能匹配分...');
   try {
-    if (!DEMO_PASSWORD) {
+    const demoPassword = getDemoPassword();
+    if (!demoPassword) {
       warn('未设置 HR_DEMO_PASSWORD，跳过匹配分自动刷新');
       console.log('');
       return true;
@@ -389,7 +487,7 @@ async function startApi() {
     const loginRes = await fetch(`http://127.0.0.1:${API_PORT}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: DEMO_ADMIN_USERNAME, password: DEMO_PASSWORD }),
+      body: JSON.stringify({ username: DEMO_ADMIN_USERNAME, password: demoPassword }),
     });
     if (loginRes.ok) {
       const { accessToken } = await loginRes.json();
@@ -420,7 +518,7 @@ async function startApi() {
 let webProc = null;
 
 async function startWeb() {
-  log('STEP', '4/5  启动前端 Web 应用', COLORS.yellow);
+  log('STEP', '5/6  启动前端 Web 应用', COLORS.yellow);
   divider();
 
   info('启动 Vite (HMR 热更新模式)...');
@@ -468,7 +566,7 @@ async function startWeb() {
 // ── 第 5 步：系统就绪 ─────────────────────────────────────────
 
 function ready() {
-  log('STEP', '5/5  系统就绪', COLORS.yellow);
+  log('STEP', '6/6  系统就绪', COLORS.yellow);
   divider();
 
   ok('所有服务已启动！');
@@ -545,6 +643,7 @@ async function main() {
   // 依次执行启动步骤。
   if (!(await checkPrerequisites())) process.exit(1);
   if (!(await startInfrastructure())) process.exit(1);
+  if (!(await bootstrapDatabase())) process.exit(1);
   if (!(await startApi())) process.exit(1);
   if (!(await startWeb())) process.exit(1);
 

@@ -10,11 +10,6 @@ interface GsapStaggerOptions {
   enabled?: boolean;
 }
 
-/**
- * Lightweight GSAP entrance animation hook for `[data-gsap-item]` children.
- * Content remains visible by default; the hook only animates after GSAP loads
- * and the user has not requested reduced motion.
- */
 export function useGsapStagger<T extends HTMLElement = HTMLElement>(options: GsapStaggerOptions = {}) {
   const {
     selector = '[data-gsap-item]',
@@ -58,7 +53,7 @@ export function useGsapStagger<T extends HTMLElement = HTMLElement>(options: Gsa
         };
       })
       .catch(() => {
-        /* GSAP unavailable; content stays visible by default. */
+        /* 内容默认保持可见，动画依赖不可用时无需处理。 */
       });
 
     return () => {

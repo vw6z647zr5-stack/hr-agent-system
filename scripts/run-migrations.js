@@ -48,7 +48,7 @@ function loadEnv(path) {
 
 function parseCommand(argv) {
   const positional = argv.find((item) => !item.startsWith('--'));
-  if (['status', 'up', 'baseline', 'dry-run'].includes(positional)) {
+  if (['status', 'up', 'baseline', 'bootstrap', 'dry-run'].includes(positional)) {
     return positional;
   }
 
@@ -58,6 +58,10 @@ function parseCommand(argv) {
 
   if (argv.includes('--baseline')) {
     return 'baseline';
+  }
+
+  if (argv.includes('--bootstrap')) {
+    return 'bootstrap';
   }
 
   if (argv.includes('--dry-run')) {
@@ -125,6 +129,10 @@ function runPsql(script) {
   }
 
   return result.stdout || '';
+}
+
+function queryBoolean(script) {
+  return runPsql(script).trim() === 'true';
 }
 
 function formatPsqlError(output) {
@@ -299,6 +307,32 @@ function migrationScript(migration) {
   ].join('\n\n');
 }
 
+function migrationAlreadySatisfied(migration) {
+  if (migration.version !== '001') {
+    return false;
+  }
+
+  return queryBoolean(`
+SELECT CASE WHEN
+  to_regclass('public.companies') IS NOT NULL
+  AND to_regclass('public.audit_logs') IS NOT NULL
+  AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'users'
+      AND column_name = 'company_id'
+  )
+  AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'employees'
+      AND column_name = 'company_id'
+  )
+THEN 'true' ELSE 'false' END;`);
+}
+
 function baselineScript(migrations) {
   const inserts = migrations.map(
     (migration) =>
@@ -361,6 +395,46 @@ function runUp(migrations, applied) {
   console.log(`数据库迁移执行完成：${pending.length} 个。`);
 }
 
+function runBootstrap(migrations, applied, hasMigrationTable) {
+  if (!hasMigrationTable) {
+    runPsql(schemaMigrationsSql);
+    console.log('schema_migrations 表已创建。');
+  }
+
+  const status = buildStatus(migrations, applied);
+  assertStatusSafe(status);
+
+  const appliedByVersion = new Set(applied.map((item) => item.version));
+  let baselineCount = 0;
+  let executedCount = 0;
+
+  for (const migration of migrations) {
+    if (appliedByVersion.has(migration.version)) {
+      continue;
+    }
+
+    if (migrationAlreadySatisfied(migration)) {
+      console.log(`写入已满足迁移基线：${migration.name}`);
+      runPsql(baselineScript([migration]));
+      appliedByVersion.add(migration.version);
+      baselineCount += 1;
+      continue;
+    }
+
+    console.log(`执行迁移：${migration.name}`);
+    runPsql(migrationScript(migration));
+    appliedByVersion.add(migration.version);
+    executedCount += 1;
+  }
+
+  if (baselineCount === 0 && executedCount === 0) {
+    console.log('数据库迁移已对齐，无需处理。');
+    return;
+  }
+
+  console.log(`数据库迁移 bootstrap 完成：写入基线 ${baselineCount} 个，执行迁移 ${executedCount} 个。`);
+}
+
 function main() {
   const migrations = loadMigrations();
   const hasMigrationTable = migrationTableExists();
@@ -378,6 +452,11 @@ function main() {
 
   if (command === 'baseline') {
     runBaseline(migrations, applied);
+    return;
+  }
+
+  if (command === 'bootstrap') {
+    runBootstrap(migrations, applied, hasMigrationTable);
     return;
   }
 

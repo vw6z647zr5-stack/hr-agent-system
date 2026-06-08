@@ -30,6 +30,13 @@ const allowedEnglishFragments = [
   /^[a-z0-9._/-]*[\\/][a-z0-9._/-]+$/i,
   /^--?[a-z0-9-]+$/i,
   /^#[0-9a-f]+$/i,
+  /^dev server$/i,
+  /^web dev$/i,
+  /^dev server URL$/i,
+  /^npm start$/i,
+  /^npm run [a-z0-9:_-]+$/i,
+  /^Program Files$/i,
+  /^Program Files x86$/i,
 ];
 
 const bannedVisibleFragments = [/Starwave/i, /\bHR\s+SaaS\b/i, /\bHR\b/i, /\bOffer\b/i, /Auto-approved/i];
@@ -49,6 +56,7 @@ const allowedTerms = new Set([
   'Redis',
   'Docker',
   'Docker Compose',
+  'GitHub',
   'LangChain',
   'DeepSeek',
   'OpenAI',
@@ -79,6 +87,13 @@ const allowedTerms = new Set([
   'AWS Secrets Manager',
   'HashiCorp Vault',
   'Service Worker',
+  'Electron',
+  'Claude Code',
+  'Codex',
+  'live smoke test',
+  'grounded answer',
+  'trace helper',
+  'destructive git',
 ]);
 
 function walk(directory, output = []) {
@@ -159,7 +174,7 @@ function isTechnicalText(value) {
     return true;
   }
 
-  if (/^(noopener noreferrer|Successfully compiled|Nest application|Local:|ready in|ERROR|error)$/i.test(trimmed)) {
+  if (/^(noop|noopener noreferrer|Successfully compiled|Nest application|Local:|ready in|ERROR|error|Unknown error)$/i.test(trimmed)) {
     return true;
   }
 

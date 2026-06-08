@@ -41,11 +41,15 @@ npm run verify:commercial -- --live
 npm start
 ```
 
+首次运行时，启动脚本会在缺少 `.env` 时自动生成随机密钥配置，启动 PostgreSQL/Redis，并执行 `npm run migrate:bootstrap` 对齐数据库结构和迁移记录。
+
 Docker 完整部署：
 
 ```bash
 docker compose up --build -d
 docker compose ps
+npm install
+npm run migrate:bootstrap
 ```
 
 默认宿主机端口：
@@ -66,6 +70,7 @@ npm run migrate:status
 需要真正执行待处理迁移时使用：
 
 ```bash
+npm run migrate:bootstrap
 npm run migrate:up
 ```
 
@@ -75,7 +80,7 @@ npm run migrate:up
 npm run migrate:baseline
 ```
 
-`baseline` 只写入迁移记录，不执行 SQL；旧结构数据库应使用 `migrate:up` 逐个升级。
+`bootstrap` 是日常推荐命令，会跳过已经由 `init.sql` 满足的早期结构转换，并执行仍待处理的幂等迁移。`baseline` 只写入迁移记录，不执行 SQL；旧结构数据库应使用 `migrate:bootstrap` 或 `migrate:up` 升级。
 
 ## 健康检查
 

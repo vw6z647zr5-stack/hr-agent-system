@@ -49,19 +49,28 @@ hr-agent-system/
 
 ## Docker 快速启动
 
-1. 复制环境变量：
+1. 复制环境变量并替换密钥：
 
 ```bash
 cp .env.example .env
 ```
 
+至少替换 `POSTGRES_PASSWORD`、`REDIS_PASSWORD` 和 `JWT_SECRET`。如果需要真实 AI 能力，再配置 `DEEPSEEK_API_KEY` 或 `OPENAI_API_KEY`。
+
 2. 启动完整服务：
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
-3. 打开系统：
+3. 对齐数据库迁移状态：
+
+```bash
+npm install
+npm run migrate:bootstrap
+```
+
+4. 打开系统：
 
 - 前端：`http://localhost:8080`
 - 后端接口：`http://localhost:3000/api`
@@ -73,6 +82,20 @@ PostgreSQL 容器会自动执行：
 
 - `infra/postgres/init.sql`
 - `infra/postgres/seed.sql`
+
+`migrate:bootstrap` 会补齐后续迁移，并为已经由 `init.sql` 满足的迁移写入基线记录。
+
+## 新设备首次运行
+
+从 GitHub clone 后，推荐使用一键启动：
+
+```bash
+npm start
+```
+
+该命令会在缺少 `.env` 时自动生成本机可用配置和随机密钥，安装依赖，启动 PostgreSQL/Redis，执行 `migrate:bootstrap`，再启动 API 和 Web。
+
+GitHub 仓库只包含源码、初始化脚本和演示种子数据，不包含本机 `.env`、`node_modules`、Docker 数据卷、上传附件和历史备份。要把一台机器上的真实数据迁移到另一台机器，先在旧机器执行 `npm run backup:local`，再在新机器用 `npm run restore:local -- backups/<timestamp> --confirm-restore` 恢复。
 
 ## 本地开发
 
@@ -140,6 +163,7 @@ psql -h localhost -U hr_admin -d hr_agent -f infra/postgres/seed.sql
 ```bash
 npm run migrate:status
 npm run migrate:dry-run
+npm run migrate:bootstrap
 npm run migrate:up
 ```
 
@@ -150,6 +174,8 @@ npm run migrate:baseline
 ```
 
 `baseline` 只写入迁移记录，不执行 SQL；旧结构数据库需要使用 `migrate:up` 逐个执行待处理迁移。
+
+日常本地和试点部署优先使用 `migrate:bootstrap`。它会识别已经由 `init.sql` 满足的早期迁移，避免重复执行旧的结构转换，同时执行仍待处理的幂等迁移。
 
 ## 知识中心和本地检索增强
 

@@ -34,6 +34,7 @@
     "migrate:dry-run": "node scripts/run-migrations.js dry-run",
     "migrate:up": "node scripts/run-migrations.js up",
     "migrate:baseline": "node scripts/run-migrations.js baseline",
+    "migrate:bootstrap": "node scripts/run-migrations.js bootstrap",
     "release:check": "node scripts/run-release-check.js",
     "verify": "npm run check:copy && npm run check:miniprogram && npm run check:desktop && npm run check:mobile && npm run lint && npm run build",
     "verify:full": "npm run verify && node scripts/verify-full-flow.js && npm run verify:surface",
